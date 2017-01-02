@@ -6,9 +6,10 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
 #include <wiringPi.h>
-#include <fstream>      
+#include <fstream>
 #include <string>
-
+#include <math.h>
+#include "opencv2/videoio.hpp"
 using namespace cv;
 using namespace std;
 
@@ -27,19 +28,23 @@ void setRed();
 void setYellow();
 void tx2Arduino();
 
-int iLowH, iHighH, iLowS, iHighS, iLowV , iHighV;
+int offset = 25; // 24=-1
+int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;
 int filterRatio = 1;
 int iLastX = 0; //line param
 int iLastY = 0;
 int lastContourIndex = -1;
 int direction;
-
+bool object_exist = FALSE;
+int largest_area = 0;
 vector<vector<Point> > contours; // Vector for storing contour
 vector<Vec4i> hierarchy;
 Rect bounding_rect;
 Point_<float> circleCenter; //bounding circle params
 float circleRadius;
-
+int lockToleranceInt = 20;
+float angle;
+string positionText = "WAITING FOR DATA";
 Mat src;
 Mat temp;
 Mat frame;
@@ -52,10 +57,10 @@ Mat newFrameDenoised;
 Mat newFrameDetected;
 Mat imageResizeIN;
 Mat imageResizeOUT;
-
+Mat lineRange;
 VideoCapture camera(0);
 
-FILE *file; //Opening device file
+FILE* file; //Opening device file
 
 int main(int, char**)
 {
@@ -65,16 +70,16 @@ int main(int, char**)
 
     //motorGPIO();
     loadWindows();
-    
+
     Mat imgTmpPreScale;
     camera.read(imgTmpPreScale);
+
     resize(imgTmpPreScale, imageResizeOUT, Size(), 0.2, 0.2, INTER_LINEAR);
     Mat imgLines = Mat::zeros(imageResizeOUT.size(), CV_8UC3);
     Mat circleEnvelope = Mat::zeros(imageResizeOUT.size(), CV_8UC3);
-    
-    
+
     while (true) {
-    	direction = 00;
+        direction = 00;
         Mat thr(imageResizeOUT.rows, imageResizeOUT.cols, CV_8UC1);
         Mat dst(imageResizeOUT.rows, imageResizeOUT.cols, CV_8UC1, Scalar::all(0));
 
@@ -83,50 +88,58 @@ int main(int, char**)
 
         detectObject();
         selectObject(dst, thr);
-        Moments oMoments = moments(dst);
-        trackObject(oMoments);
+
+        if (object_exist) {
+            Moments oMoments = moments(dst);
+            trackObject(oMoments);
+        }
 
         displayRASP(dst);
-        
+
         //displayCOMP(Mat dst);
         //motorDrive();
         //tx2Arduino();
-        
+
         int c = waitKey(10);
         if ((char)c == 27) {
-        	while(1){
-        	direction=00;
-        	tx2Arduino();
-            // digitalWrite(25, LOW);
-            // digitalWrite(29, LOW);
-        }
+
+            //cvReleaseVideoWriter(video);
+            break;
+            while (1) {
+                direction = 00;
+                //tx2Arduino();
+                // digitalWrite(25, LOW);
+                // digitalWrite(29, LOW);
+            }
             break;
         }
     }
     return 0;
 }
 
-void tx2Arduino(){      
-          file = fopen("/dev/ttyUSB0", "w");        
-          //cout << "tx:" << endl;        
-          fprintf(file, "%d/r", direction);//Writing to the file     
-          fclose(file);     
-            
-    }       
-
+void tx2Arduino()
+{
+    file = fopen("/dev/ttyUSB4", "w");
+    //cout << "tx:" << endl;
+    fprintf(file, "%d/r", direction); //Writing to the file
+    fclose(file);
+}
 
 void loadWindows()
 {
     char controlBar[] = "Control Bar";
-    namedWindow(controlBar, CV_WINDOW_AUTOSIZE); //create a window called "Control"
+    namedWindow(controlBar, WINDOW_NORMAL); //create a window called "Control"
 
-    cvCreateTrackbar("filter", controlBar, &filterRatio, 21); //Hue (0 - 179)
+    cvCreateTrackbar("filter", controlBar, &filterRatio, 9); //Hue (0 - 179)
     cvCreateTrackbar("LowHue", controlBar, &iLowH, 179); //Hue (0 - 179)
     cvCreateTrackbar("HighHue", controlBar, &iHighH, 179);
     cvCreateTrackbar("LowSat", controlBar, &iLowS, 255); //Saturation (0 - 255)
-    cvCreateTrackbar("HighSat", controlBar, &iHighS, 255);
+    //cvCreateTrackbar("HighSat", controlBar, &iHighS, 255);
     cvCreateTrackbar("LowVal", controlBar, &iLowV, 255); //Value (0 - 255)
-    cvCreateTrackbar("HighVal", controlBar, &iHighV, 255);
+    //cvCreateTrackbar("HighVal", controlBar, &iHighV, 255);
+
+    cvCreateTrackbar("lockTolerance", controlBar, &lockToleranceInt, 50); //Value (0 - 255)
+    cvCreateTrackbar("offset", controlBar, &offset, 50); //Value (0 - 255)
 }
 
 void detectObject()
@@ -140,7 +153,7 @@ void detectObject()
 
 void selectObject(Mat& dst, Mat& thr)
 {
-    int largest_area = 0;
+    largest_area = 0;
     int largest_contour_index = 0;
     findContours(newFrameThresholded, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE); // Find the contours in the image
     Scalar color(255, 255, 255);
@@ -156,18 +169,30 @@ void selectObject(Mat& dst, Mat& thr)
         }
     }
 
-    drawContours(dst, contours, largest_contour_index, color, CV_FILLED, 8, hierarchy); // Draw the largest contour using previously stored index.
-    circle(newFrame, circleCenter, circleRadius, Scalar(255, 0, 0), 2, 8, 0);
+    if (largest_area > 25) {
+        drawContours(dst, contours, largest_contour_index, color, CV_FILLED, 8, hierarchy); // Draw the largest contour using previously stored index.
+        circle(newFrame, circleCenter, circleRadius, Scalar(255, 0, 0), 2, 8, 0);
+        object_exist = TRUE;
+        cout << largest_area << endl;
+    }
+    else {
+        //cout<<"No Object";      //search funtion should be implemented for no object case
+        object_exist = FALSE;
+    }
 
     float circleEnvelopeArea = 3.1412 * circleRadius * circleRadius;
-    float fillRatio=largest_area / circleEnvelopeArea;
-    cout << fillRatio << endl;
-    //cout << circleRadius << endl;
-    if (0.82 < fillRatio) { 
-         cout << "ALIGN" << endl;
-         direction = 11;
-         cout <<fillRatio<< endl;
-    }
+    float fillRatio = largest_area / (0.9 * circleEnvelopeArea);
+
+    angle = acos(fillRatio) * 180.0 / 3.14;
+    if (fillRatio > 1.0)
+        angle = 0;
+    //cout << angle << endl;
+
+    // if (0.79 < fillRatio) {
+    //    cout << "ALIGN" << endl;
+    //    direction = 11;
+    //     cout <<fillRatio<< endl;
+    //}
 }
 
 void trackObject(Moments& oMoments)
@@ -187,28 +212,71 @@ void trackObject(Moments& oMoments)
 
 void driverOutput(int& posX, int& posY)
 {
-    double lockTolerance = 0.05;
-    cv::Size s = newFrame.size();
-    int height = s.height;
-    int mid = s.width / 2;
-    int offset = 0 ;
 
-    int lowRange = mid * (1 - lockTolerance)+offset;
-    int HighRange = mid * (1 + lockTolerance)+offset;
+    cv::Size s = newFrame.size();
+    float height = s.height;
+    int mid = s.width / 2;
+
+    float lineHeight = height * 0.75;
+    float lockTolerance = lockToleranceInt / 100.0;
+    //cout << lockTolerance << endl;
+    int lowRange = mid * (1 - lockTolerance) + (offset - 25);
+    int HighRange = mid * (1 + lockTolerance) + (offset - 25);
     int stopRange = 0.8 * height; //adjust the constant for stop range
-	if (direction==11){
-}
-else if (posX > HighRange) {
-        cout << "RIGHT" << endl;
+
+    line(newFrame, Point(lowRange, lineHeight), Point(HighRange, lineHeight), Scalar(255, 0, 255), 2, 8);
+
+    ostringstream statusBar;
+    if (posX < HighRange && posX > lowRange) {
+
+        positionText.assign("Mid Angle:");
+
+        statusBar << int(angle);
+        positionText.append(statusBar.str());
+        //cout << "MID" << endl;
+        //cout << posX << endl;
+        direction = 11;
+    }
+    else if (posX > HighRange) {
+        positionText.assign("Right Offset:");
+
+        statusBar << int(posX - mid);
+        positionText.append(statusBar.str());
+        //cout << "RIGHT" << endl;
         //cout << posX << endl;
         direction = 10;
     }
 
     else if (posX < lowRange) {
-        cout << "LEFT" << endl;
+        positionText.assign("Left Offset:");
+
+        statusBar << int(mid - posX);
+        positionText.append(statusBar.str());
+        //cout << "LEFT" << endl;
         direction = 01;
     }
+    statusBar.str(""); //clear string stream
+    float x = largest_area;
+    float a = -0.00741;
+    float b = 8637;
+    float c = 37.38;
 
+    float distance1 = (a * x + b / x + c);
+
+    a = -0.98565;
+    b = 204.304;
+    float distance2 = a * x + b;
+
+    if (distance1 > 110) {
+        statusBar << int(distance2);
+        positionText.append(" Dist.: ");
+        positionText.append(statusBar.str());
+    }
+    else {
+        statusBar << int(distance1);
+        positionText.append(" Dist.: ");
+        positionText.append(statusBar.str());
+    }
     //else{
     //    direction=00;
     //}
@@ -234,62 +302,70 @@ void motorGPIO()
 }
 
 void motorDrive()
-{  
+{
     switch (direction) {
-     case 11:{
-         digitalWrite(23, HIGH);
-         digitalWrite(27, HIGH);
-         break;
+    case 11: {
+        digitalWrite(23, HIGH);
+        digitalWrite(27, HIGH);
+        break;
     }
-    case 10:{
+    case 10: {
         digitalWrite(23, LOW);
         digitalWrite(27, HIGH);
         break;
     }
-    case 01:{
+    case 01: {
         digitalWrite(23, HIGH);
         digitalWrite(27, LOW);
         break;
     }
-    case 00:{
+    case 00: {
         digitalWrite(23, LOW);
         digitalWrite(27, LOW);
         break;
     }
-    default:{
+    default: {
         digitalWrite(23, LOW);
         digitalWrite(27, LOW);
         break;
     }
     }
 }
-void displayCOMP(Mat dst){
+void displayCOMP(Mat dst)
+{
     namedWindow("Denoised", 1);
     namedWindow("Thresholded", 1);
     resize(newFrame, newFrame, Size(), 2, 2, INTER_LINEAR);
-    resize(newFrameThresholded, newFrameThresholded, Size(),1, 1, INTER_LINEAR);
+    resize(newFrameThresholded, newFrameThresholded, Size(), 1, 1, INTER_LINEAR);
     imshow("Denoised", newFrame); //show camera input at thr. window in HSV
     imshow("Control Bar", dst); //show camera input at thr. window in HSV
 }
+
 void displayRASP(Mat dst)
 {
     namedWindow("Denoised", 1);
     //namedWindow("Thresholded", 1);
     resize(newFrame, newFrame, Size(), 2, 2, INTER_LINEAR);
     //resize(newFrameThresholded, newFrameThresholded, Size(),1, 1, INTER_LINEAR);
+
+    displayStatusBar("Denoised", positionText, 0);
     imshow("Denoised", newFrame); //show camera input at thr. window in HSV
     imshow("Control Bar", dst); //show camera input at thr. window in HSV
+
+    positionText.assign("");
 }
 
-void setBlue(){
-    iLowH = 41;
-    iHighH = 108;
-    iLowS = 98;
+void setBlue()
+{
+    iLowH = 45;
+    iHighH = 120;
+    iLowS = 105;
     iHighS = 255;
-    iLowV = 99;
+    iLowV = 95;
     iHighV = 255;
 }
-void setRed(){
+void setRed()
+{
     iLowH = 35;
     iHighH = 179;
     iLowS = 100;
@@ -297,7 +373,8 @@ void setRed(){
     iLowV = 100;
     iHighV = 255;
 }
-void setYellow(){
+void setYellow()
+{
     iLowH = 0;
     iHighH = 40;
     iLowS = 0;
