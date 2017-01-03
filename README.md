@@ -3,9 +3,6 @@
 ### Jan 2, 2017
 #### Important Updates
 * Line guides are added to indicate boundaries of direction decision.
-* Trackbars are added to control the boundary limits: 
-	* direction boundary (x-axis limits)
-	* offset (to compansate the offset camera on robot)
 * Status Bar to replace terminal outputs that can currently display:
 	* Location of the image (Left, Mid, Right)
 	* Angle information (degrees)
@@ -21,6 +18,9 @@
 	* Status Bar displays "Searching!".
 	
 #### Small Tweaks and Configurations
+* Trackbars are added to control the boundary limits: 
+	* direction boundary (x-axis limits)
+	* offset (to compansate the offset camera on robot)
 * Unnecessary function initializations are removed or merged.
 * Status Bar will be used as the output window rather than terminal from now on.
 * Window type set to WINDOW_NORMAL for control bar.
