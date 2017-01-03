@@ -111,10 +111,10 @@ void loadWindows()
     // cvCreateTrackbar("filter", controlBar, &filterRatio, 9); //Hue (0 - 179)
     cvCreateTrackbar("LowHue", controlBar, &iLowH, 179); // Hue (0 - 179)
     cvCreateTrackbar("HighHue", controlBar, &iHighH, 179);
-    // cvCreateTrackbar("LowSat", controlBar, &iLowS, 255); //Saturation (0 - 255)
-    // cvCreateTrackbar("HighSat", controlBar, &iHighS, 255);
-    // cvCreateTrackbar("LowVal", controlBar, &iLowV, 255); //Value (0 - 255)
-    // cvCreateTrackbar("HighVal", controlBar, &iHighV, 255);
+     cvCreateTrackbar("LowSat", controlBar, &iLowS, 255); //Saturation (0 - 255)
+     cvCreateTrackbar("HighSat", controlBar, &iHighS, 255);
+     cvCreateTrackbar("LowVal", controlBar, &iLowV, 255); //Value (0 - 255)
+     cvCreateTrackbar("HighVal", controlBar, &iHighV, 255);
     cvCreateTrackbar("Margin", controlBar, &lockToleranceInt,
         50); // Value (0 - 255)
     cvCreateTrackbar("Offset", controlBar, &offset, 50); // Value (0 - 255)
@@ -222,6 +222,11 @@ void directionData(int& posX, int& posY)
         statusBar << int(getAngle());
         positionText.append(statusBar.str());
         direction = 11;
+
+        statusBar.str(""); // clear string stream
+    statusBar << int(getDistance());
+    positionText.append("  Dist.: ");
+    positionText.append(statusBar.str());
     }
     else if (posX > highRange) {
         positionText.assign("Right  Offset:");
@@ -237,12 +242,9 @@ void directionData(int& posX, int& posY)
         direction = 01;
     }
 
-    statusBar.str(""); // clear string stream
-    statusBar << int(getDistance());
-    positionText.append("  Dist.: ");
-    positionText.append(statusBar.str());
     
-    if (posY > stopRange){
+
+    if (posY > stopRange) {
         positionText.assign("Stop!");
         direction = 00;
     }
