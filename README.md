@@ -28,5 +28,9 @@
 * resizeRatio parameter to control all resizing functions.
 * many commented out lines are deleted.
 
+
 #### To do
 * Search function
+* Check if the object has hole
+	- If the middle pixel is black --> object is the cylinder
+	
