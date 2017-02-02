@@ -104,21 +104,6 @@ void tx2Arduino()
     fclose(file);
 }
 
-void loadWindows()
-{
-    char controlBar[] = "Control Bar";
-    namedWindow(controlBar, WINDOW_NORMAL); // create a window called "Control"
-    // cvCreateTrackbar("filter", controlBar, &filterRatio, 9); //Hue (0 - 179)
-    cvCreateTrackbar("LowHue", controlBar, &iLowH, 179); // Hue (0 - 179)
-    cvCreateTrackbar("HighHue", controlBar, &iHighH, 179);
-     cvCreateTrackbar("LowSat", controlBar, &iLowS, 255); //Saturation (0 - 255)
-     cvCreateTrackbar("HighSat", controlBar, &iHighS, 255);
-     cvCreateTrackbar("LowVal", controlBar, &iLowV, 255); //Value (0 - 255)
-     cvCreateTrackbar("HighVal", controlBar, &iHighV, 255);
-    cvCreateTrackbar("Margin", controlBar, &lockToleranceInt,
-        50); // Value (0 - 255)
-    cvCreateTrackbar("Offset", controlBar, &offset, 50); // Value (0 - 255)
-}
 
 void detectObject()
 {
@@ -286,7 +271,7 @@ void setColor(int setColor)
         iLowV = 220;
         iHighV = 255;
         break;
-    case int('Y'):
+    case int('G'):
         iLowH = 0;
         iHighH = 40;
         iLowS = 0;
@@ -295,4 +280,20 @@ void setColor(int setColor)
         iHighV = 255;
         break;
     }
+}
+
+void loadWindows()
+{
+    char controlBar[] = "Control Bar";
+    namedWindow(controlBar, WINDOW_NORMAL); // create a window called "Control"
+    cvCreateTrackbar("filter", controlBar, &filterRatio, 9); //Hue (0 - 179)
+    cvCreateTrackbar("LowHue", controlBar, &iLowH, 179); // Hue (0 - 179)
+    cvCreateTrackbar("HighHue", controlBar, &iHighH, 179);
+    cvCreateTrackbar("LowSat", controlBar, &iLowS, 255); //Saturation (0 - 255)
+    cvCreateTrackbar("HighSat", controlBar, &iHighS, 255);
+    cvCreateTrackbar("LowVal", controlBar, &iLowV, 255); //Value (0 - 255)
+    cvCreateTrackbar("HighVal", controlBar, &iHighV, 255);
+    cvCreateTrackbar("Margin", controlBar, &lockToleranceInt,
+        50); // Value (0 - 255)
+    cvCreateTrackbar("Offset", controlBar, &offset, 50); // Value (0 - 255)
 }
