@@ -9,7 +9,8 @@ using namespace cv;
 using namespace std;
 
 void loadWindows(); // loads control window
-void detectObject(); // selects the target objects
+
+void detectObject(int setColor);
 void selectObject(Mat& dst, Mat& thr); // filters out the closes object
 void trackObject(Mat dst);
 void directionData(int& posX, int& posY); // send motor signals
@@ -56,7 +57,7 @@ FILE* file; // Opening device file
 
 int main(int, char**)
 {
-    setColor('B');
+    //setColor('B');
     loadWindows();
 
     Mat imgTmpPreScale;
@@ -77,7 +78,7 @@ int main(int, char**)
         resize(newFramePreScale, newFrame, Size(), resizeRatio, resizeRatio,
             INTER_LINEAR);
 
-        detectObject();
+        detectObject('B');
         selectObject(dst, thr);
         trackObject(dst);
 
@@ -109,14 +110,19 @@ void tx2Arduino()
 }
 
 
-void detectObject()
+void detectObject(int setColor)
 {
+    x=setColor;
+    setColor(x);
     medianBlur(newFrame, newFrameFilter,
         2 * filterRatio + 1); // filters out noise, filterratio must be odd
     cvtColor(newFrameFilter, newFrameFilter, COLOR_BGR2HSV);
     inRange(newFrameFilter, Scalar(iLowH, iLowS, iLowV),
         Scalar(iHighH, iHighS, iHighV), newFrameThresholded);
 }
+
+
+
 
 void selectObject(Mat& dst, Mat& thr)
 {
@@ -271,6 +277,7 @@ void displayTest(Mat image)
     imshow("Test Window", centerFrame);
 }
 
+
 void setColor(int setColor)
 {
     switch (setColor) {
@@ -308,6 +315,7 @@ void setColor(int setColor)
         break;
     }
 }
+
 
 void loadWindows()
 {
