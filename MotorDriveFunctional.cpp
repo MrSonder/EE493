@@ -286,5 +286,13 @@ void setColor(int setColor)
         iLowV = 220;
         iHighV = 255;
         break;
+    case int('Y'):
+        iLowH = 0;
+        iHighH = 40;
+        iLowS = 0;
+        iHighS = 255;
+        iLowV = 220;
+        iHighV = 255;
+        break;
     }
 }
