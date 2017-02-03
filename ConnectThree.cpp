@@ -6,22 +6,24 @@
 #include <string>
 #include <math.h>
 #include <stdlib.h>
+#include <time.h>
+
 using namespace cv;
 using namespace std;
 
 void loadWindows(); // loads control window
-void detectObject(int color);
-void selectObject(Mat& dst); // filters out the closes object
-void trackObject(Mat dst);
+void detectObject(int colorFront);
+void selectObjectLargestArea(Mat& dst); // filters out the closes object
+void trackObject(Mat dst, bool arduinoConnected);
 void directionData(int& posX, int& posY); // send motor signals
 void displayRASP(Mat dst);
-void setColor(int color);
+void setColor(int colorFront);
 void tx2Arduino();
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
-void drawCenterLine(Mat imageBody);
+void drawCenterLine(Mat imageBody, int colorFront);
 void findCenter(Mat image, Point2f& point);
 void selectObject2(Mat& imageIN, Mat& imageOUT);
-
+int getFPS();
 
 int offset = 25; // 24=-1
 int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;
@@ -33,6 +35,8 @@ int largest_area = 0;
 float circleRadius;
 int lockToleranceInt = 20;
 float angle;
+double fps=0;
+time_t start;
 
 vector<vector<Point> > contours; // Vector for storing contour
 vector<Vec4i> hierarchy;
@@ -49,21 +53,23 @@ Mat imageResizeOUT;
 VideoCapture camera(0);
 
 FILE* file; // object to open device file
+float resizeRatio = 0.5;
 
 int main(int argc, char* argv[])
 {
-    int color='B';
-    setColor(color);
+    int colorFront='B';
+    bool arduinoConnected=false;
+    setColor(colorFront);
     loadWindows();
     Mat imgTmpPreScale;
     camera.read(imgTmpPreScale);
-
-    float resizeRatio = 0.2;
+    
     resize(imgTmpPreScale, imageResizeOUT, Size(), resizeRatio, resizeRatio,
         INTER_LINEAR);
     Mat imgLines = Mat::zeros(imageResizeOUT.size(), CV_8UC3);
     Mat circleEnvelope = Mat::zeros(imageResizeOUT.size(), CV_8UC3);
 
+    
     while (true) {
         direction = 00;
         Mat dst(imageResizeOUT.rows, imageResizeOUT.cols, CV_8UC1, Scalar::all(0));
@@ -72,24 +78,21 @@ int main(int argc, char* argv[])
         resize(newFramePreScale, newFrame, Size(), resizeRatio, resizeRatio,
             INTER_LINEAR);
 
-        detectObject(color);
-        drawCenterLine(newFrameFilter);
-        selectObject(dst);
-        trackObject(dst);
-        
+        detectObject(colorFront);
+        drawCenterLine(newFrameFilter, colorFront);
+        selectObjectLargestArea(dst);
+        trackObject(dst,arduinoConnected); // tx2Arduino() implemented inside track object
         displayRASP(dst);
-        // tx2Arduino();
-
+        
         int c = waitKey(10);
         if ((char)c == 27) {
             break;
             while (1) {
                 direction = 00;
                 //tx2Arduino();
-
             }
             break;
-        }
+        }  
     }
     return 0;
 }
@@ -102,10 +105,9 @@ void tx2Arduino()
 }
 
 
-void detectObject(int color)
+void detectObject(int colorFront)
 {
-    
-    setColor(color);
+    setColor(colorFront);
     medianBlur(newFrame, newFrameFilter,
         2 * filterRatio + 1); // filters out noise, filterratio must be odd
     cvtColor(newFrameFilter, newFrameFilter, COLOR_BGR2HSV);
@@ -113,21 +115,20 @@ void detectObject(int color)
         Scalar(iHighH, iHighS, iHighV), newFrameThresholded);   
 }
 
-
-void drawCenterLine(Mat imageBody) //returns angle of the line
+void drawCenterLine(Mat imageBody, int colorFront) //returns angle of the line
 {
     Mat imageOUT1(imageResizeOUT.rows, imageResizeOUT.cols, CV_8UC1, Scalar::all(0));
     Mat imageOUT2(imageResizeOUT.rows, imageResizeOUT.cols, CV_8UC1, Scalar::all(0));
     Mat imageOUT3(imageResizeOUT.rows, imageResizeOUT.cols, CV_8UC1, Scalar::all(0));
        
-    setColor('G');
+    setColor('G'); //cyclnder middle color
     inRange(newFrameFilter, Scalar(iLowH, iLowS, iLowV),
         Scalar(iHighH, iHighS, iHighV), imageBody);
     Point2f point_mid;
     selectObject2(imageBody,imageOUT1);
     findCenter(imageOUT1, point_mid);
     
-    setColor('B');
+    setColor(colorFront);
     inRange(newFrameFilter, Scalar(iLowH, iLowS, iLowV),
         Scalar(iHighH, iHighS, iHighV), imageBody);
     Point2f point_front;
@@ -136,7 +137,7 @@ void drawCenterLine(Mat imageBody) //returns angle of the line
  
     drawStraightLine(&newFrame,point_mid, point_front);
     imageOUT3=imageOUT1+imageOUT2;
-    resize(imageOUT3, imageOUT3, Size(), 2, 2, INTER_LINEAR);
+    resize(imageOUT3, imageOUT3, Size(), 0.5/resizeRatio, 0.5/resizeRatio, INTER_LINEAR);
     imshow("Test Window", imageOUT3);
 }
 
@@ -153,6 +154,7 @@ void findCenter(Mat image, Point2f& point)
 
 void selectObject2(Mat& imageIN, Mat& imageOUT)
 {
+
     largest_area = 0;
     int largest_contour_index = 0;
     findContours(imageIN, contours, hierarchy, CV_RETR_CCOMP,
@@ -200,7 +202,7 @@ void drawStraightLine(Mat *img, Point2f p1, Point2f p2)
 }
 
 
-void selectObject(Mat& dst)
+void selectObjectLargestArea(Mat& dst) //selects the object with largest area
 {
     largest_area = 0;
     int largest_contour_index = 0;
@@ -229,14 +231,29 @@ void selectObject(Mat& dst)
 }
 
 
-int getAngle()
+
+int fillRatio()  //unused
 {
-    /*float circleEnvelopeArea = 3.1412 * circleRadius * circleRadius;
+    float circleEnvelopeArea = 3.1412 * circleRadius * circleRadius;
     float fillRatio = largest_area / (0.9 * circleEnvelopeArea);
     angle = acos(fillRatio) * 180.0 / 3.1412;
     if (fillRatio > 1.0)
-        angle = 0;*/
-    return angle;
+        angle = 0;
+    return fillRatio;
+}
+
+/*int getAngle()
+{
+    return fps;
+}*/
+
+int getFPS()
+{
+    time_t end;
+    end=clock();
+    fps= CLOCKS_PER_SEC /(end-start) ;
+    start=end;
+    return fps;
 }
 
 int getDistance()
@@ -256,7 +273,7 @@ int getDistance()
     return distance;
 }
 
-void trackObject(Mat dst)
+void trackObject(Mat dst, bool arduinoConnected)
 {
     if (!object_exist) {
         positionText.assign("Searching!");
@@ -270,6 +287,9 @@ void trackObject(Mat dst)
     int posX = dM10 / dArea;
     int posY = dM01 / dArea;
     directionData(posX, posY); // enable motor output
+
+    if (arduinoConnected)
+        tx2Arduino();
 }
 
 void directionData(int& posX, int& posY)
@@ -290,8 +310,8 @@ void directionData(int& posX, int& posY)
     ostringstream statusBar;
     positionText.assign("");
     if (posX < highRange && posX > lowRange) {
-        positionText.assign("Mid    Angle :");
-        statusBar << int(getAngle());
+        positionText.assign("Mid    FPS :");
+        statusBar << int(getFPS());
         positionText.append(statusBar.str());
         direction = 11;
 
@@ -323,18 +343,17 @@ void directionData(int& posX, int& posY)
 void displayRASP(Mat dst)
 {
     namedWindow("Denoised", 1);
-    resize(newFrame, newFrame, Size(), 2, 2, INTER_LINEAR);
+    resize(newFrame, newFrame, Size(), 0.5/resizeRatio, 0.5/resizeRatio, INTER_LINEAR);
     displayStatusBar("Denoised", positionText, 0);
     imshow("Denoised", newFrame); // show camera input at thr. window in HSV
     imshow("Control Bar", dst); // show camera input at thr. window in HSV
     namedWindow("Test Window",1);
- 
 }
 
 
-void setColor(int color)
+void setColor(int colorFront)
 {
-    switch (color) {
+    switch (colorFront) {
     case int('B'):
         iLowH = 90;
         iHighH = 110;
@@ -375,7 +394,7 @@ void loadWindows()
 {
     char controlBar[] = "Control Bar";
     namedWindow(controlBar, WINDOW_NORMAL); // create a window called "Control"
-    cvCreateTrackbar("filter", controlBar, &filterRatio, 9); //Hue (0 - 179)
+    cvCreateTrackbar("filter", controlBar, &filterRatio, 5); //Hue (0 - 179)
     cvCreateTrackbar("LowHue", controlBar, &iLowH, 179); // Hue (0 - 179)
     cvCreateTrackbar("HighHue", controlBar, &iHighH, 179);
     cvCreateTrackbar("LowSat", controlBar, &iLowS, 255); //Saturation (0 - 255)
