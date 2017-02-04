@@ -12,7 +12,7 @@ using namespace cv;
 using namespace std;
 
 void loadWindows(); // loads control window
-void detectObject(int colorFront);
+//void detectObject(int colorFront);
 void selectObjectLargestArea(Mat& dst); // filters out the closes object
 void trackObject(Mat dst, bool arduinoConnected);
 void directionData(int& posX, int& posY); // send motor signals
@@ -20,10 +20,14 @@ void displayRASP(Mat dst);
 void setColor(int colorFront);
 void tx2Arduino();
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
-void drawCenterLine(Mat imageBody, int colorFront);
+//void drawCenterLine(Mat imageBody, int colorFront);
 void findCenter(Mat image, Point2f& point);
-void selectObject2(Mat& imageIN, Mat& imageOUT);
+void selectObject2(Mat& imageIN);
 int getFPS();
+
+
+Mat drawCenterLine2(Mat imageIn, int colorFront);
+Mat detectObject(Mat image, int colorFront);
 
 int offset = 25; // 24=-1
 int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;
@@ -43,10 +47,11 @@ time_t start;
 string positionText = "WAITING FOR DATA";
 Mat newFrame;
 Mat newFramePreScale;
-Mat newFrameFilter;
+Mat imageHSV;
 Mat newFrameThresholded;
 Mat imageResizeOUT;
 Mat dst;
+Mat testImage;
 VideoCapture camera(0);
 
 FILE* file; // object to open device file
@@ -67,9 +72,8 @@ int main(int argc, char* argv[])
             INTER_LINEAR);
 
         dst = Mat::zeros(newFrame.size(), CV_8UC1);
-        
-        detectObject(colorFront);
-        drawCenterLine(newFrameFilter, colorFront);
+
+        newFrameThresholded=drawCenterLine2(newFrame, colorFront);
         selectObjectLargestArea(dst);
         trackObject(dst,arduinoConnected); // tx2Arduino() implemented inside track object
         displayRASP(dst);
@@ -94,60 +98,42 @@ void tx2Arduino()
     fclose(file);
 }
 
-
-void detectObject(int colorFront)
+Mat thresholdImage(Mat image, int colorFront)
 {
+    Mat imageOUT;
     setColor(colorFront);
-    GaussianBlur(newFrame, newFrameFilter, cv::Size(5, 5), 2*filterRatio+1, 2*filterRatio+1);
-    cvtColor(newFrameFilter, newFrameFilter, COLOR_BGR2HSV);
-    inRange(newFrameFilter, Scalar(iLowH, iLowS, iLowV),
-        Scalar(iHighH, iHighS, iHighV), newFrameThresholded);   
-    erode(newFrameThresholded, newFrameThresholded, cv::Mat(), cv::Point(-1, -1), 1);
-    dilate(newFrameThresholded, newFrameThresholded, cv::Mat(), cv::Point(-1, -1), dilateIter);
+    GaussianBlur(image, imageOUT, cv::Size(5, 5), 2*filterRatio+1, 2*filterRatio+1);
+    cvtColor(imageOUT, imageOUT, COLOR_BGR2HSV);
+    inRange(imageOUT, Scalar(iLowH, iLowS, iLowV),
+        Scalar(iHighH, iHighS, iHighV), imageOUT);   
+    erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 1);
+    dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), dilateIter);
+    return imageOUT;
 }
 
-void detectObject2(Mat& image, int colorFront)
+Mat drawCenterLine2(Mat imageIn, int colorFront) //returns angle of the line
 {
-    setColor(colorFront);
-    GaussianBlur(image, image, cv::Size(5, 5), 2*filterRatio+1, 2*filterRatio+1);
-    cvtColor(image, image, COLOR_BGR2HSV);
-    inRange(image, Scalar(iLowH, iLowS, iLowV),
-        Scalar(iHighH, iHighS, iHighV), image);   
-    erode(image, image, cv::Mat(), cv::Point(-1, -1), 1);
-    dilate(image, image, cv::Mat(), cv::Point(-1, -1), dilateIter);
-}
+    Mat image1,image2;
 
-
-void drawCenterLine(Mat imageBody, int colorFront) //returns angle of the line
-{
-    Mat imageOUT1(newFrame.rows, newFrame.cols, CV_8UC1, Scalar::all(0));
-    Mat imageOUT2(newFrame.rows, newFrame.cols, CV_8UC1, Scalar::all(0));
-    Mat imageOUT3(newFrame.rows, newFrame.cols, CV_8UC1, Scalar::all(0));
-       
-    setColor('G'); //cyclnder middle color
-    inRange(newFrameFilter, Scalar(iLowH, iLowS, iLowV),
-        Scalar(iHighH, iHighS, iHighV), imageBody);
-    erode(imageBody, imageBody, cv::Mat(), cv::Point(-1, -1), 1);
-    dilate(imageBody, imageBody, cv::Mat(), cv::Point(-1, -1), dilateIter);
-    
+    image1=thresholdImage(imageIn, 'G');
     Point2f point_mid;
-    selectObject2(imageBody,imageOUT1);
-    findCenter(imageOUT1, point_mid);
-    
-    setColor(colorFront);
-    inRange(newFrameFilter, Scalar(iLowH, iLowS, iLowV),
-        Scalar(iHighH, iHighS, iHighV), imageBody);
-    erode(imageBody, imageBody, cv::Mat(), cv::Point(-1, -1), 1);
-    dilate(imageBody, imageBody, cv::Mat(), cv::Point(-1, -1), dilateIter);
-    
+    selectObject2(image1);
+    findCenter(image1, point_mid);
+
+    image2=thresholdImage(imageIn, colorFront);
     Point2f point_front;
-    selectObject2(imageBody,imageOUT2);
-    findCenter(imageOUT2, point_front);
- 
-    drawStraightLine(&newFrame,point_mid, point_front);
-    imageOUT3=imageOUT1+imageOUT2;
-    resize(imageOUT3, imageOUT3, Size(), 0.5/resizeRatio, 0.5/resizeRatio, INTER_LINEAR);
-    imshow("Test Window", imageOUT3);
+    selectObject2(image2);
+    findCenter(image2, point_front);
+
+    drawStraightLine(&newFrame,point_mid,point_front);
+    
+    //show on the test window
+    image1=image1+image2;
+    resize(image1, image1, Size(), 0.5/resizeRatio, 0.5/resizeRatio, INTER_LINEAR);
+    imshow("Test Window", image1);
+    
+    return image2;
+
 }
 
 void findCenter(Mat image, Point2f& point)
@@ -158,17 +144,16 @@ void findCenter(Mat image, Point2f& point)
     double dArea = oMoments.m00;
     int posX = dM10 / dArea;
     int posY = dM01 / dArea;
-    point=Point(posX,posY);
 }
 
-void selectObject2(Mat& imageIN, Mat& imageOUT)
+void selectObject2(Mat& image)
 {
     vector<vector<Point> > contours; // Vector for storing contour
     vector<Vec4i> hierarchy;
 
     largest_area = 0;
     int largest_contour_index = 0;
-    findContours(imageIN, contours, hierarchy, CV_RETR_CCOMP,
+    findContours(image, contours, hierarchy, CV_RETR_CCOMP,
         CV_CHAIN_APPROX_SIMPLE); // Find the contours in the image
     for (int i = 0; i < contours.size(); i++) // iterate through each contour.
     {
@@ -178,9 +163,12 @@ void selectObject2(Mat& imageIN, Mat& imageOUT)
             largest_contour_index = i; // Store the index of largest contour
         }
     }
+
      if (largest_area > 25) {
+         image = Mat::zeros(image.size(), CV_8UC1);
+
         drawContours(
-            imageOUT, contours, largest_contour_index, Scalar(255, 0, 0), CV_FILLED, 8,
+            image, contours, largest_contour_index, Scalar(255, 0, 0), CV_FILLED, 8,
             hierarchy); // Draw the largest contour using previously stored index.
      }
 }
