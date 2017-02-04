@@ -125,9 +125,8 @@ Mat drawCenterLine2(Mat imageIn, int colorFront) //returns angle of the line
     selectObject2(image2);
     findCenter(image2, point_front);
 
-    drawStraightLine(&newFrame,point_mid,point_front);
+    drawStraightLine(&newFrame,point_mid, point_front);
     
-    //show on the test window
     image1=image1+image2;
     resize(image1, image1, Size(), 0.5/resizeRatio, 0.5/resizeRatio, INTER_LINEAR);
     imshow("Test Window", image1);
@@ -144,6 +143,7 @@ void findCenter(Mat image, Point2f& point)
     double dArea = oMoments.m00;
     int posX = dM10 / dArea;
     int posY = dM01 / dArea;
+    point=Point(posX,posY);
 }
 
 void selectObject2(Mat& image)
