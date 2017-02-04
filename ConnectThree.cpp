@@ -27,8 +27,9 @@ int getFPS();
 
 int offset = 25; // 24=-1
 int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;
-int filterRatio = 0;
-int lastContourIndex = -1;
+int filterRatio = 1;
+int dilateIter=1;
+
 int direction;
 bool object_exist = false;
 int largest_area = 0;
@@ -38,18 +39,14 @@ float angle;
 double fps=0;
 time_t start;
 
-vector<vector<Point> > contours; // Vector for storing contour
-vector<Vec4i> hierarchy;
-Rect bounding_rect;
-Point_<float> circleCenter; // bounding circle params
+
 string positionText = "WAITING FOR DATA";
-Mat frame;
 Mat newFrame;
 Mat newFramePreScale;
 Mat newFrameFilter;
 Mat newFrameThresholded;
-Mat imageResizeIN;
 Mat imageResizeOUT;
+Mat dst;
 VideoCapture camera(0);
 
 FILE* file; // object to open device file
@@ -59,32 +56,25 @@ int main(int argc, char* argv[])
 {
     int colorFront='B';
     bool arduinoConnected=false;
+
     setColor(colorFront);
     loadWindows();
-    Mat imgTmpPreScale;
-    camera.read(imgTmpPreScale);
-    
-    resize(imgTmpPreScale, imageResizeOUT, Size(), resizeRatio, resizeRatio,
-        INTER_LINEAR);
-    Mat imgLines = Mat::zeros(imageResizeOUT.size(), CV_8UC3);
-    Mat circleEnvelope = Mat::zeros(imageResizeOUT.size(), CV_8UC3);
 
-    
     while (true) {
         direction = 00;
-        Mat dst(imageResizeOUT.rows, imageResizeOUT.cols, CV_8UC1, Scalar::all(0));
-
         camera >> newFramePreScale; // get a new frame from camera
         resize(newFramePreScale, newFrame, Size(), resizeRatio, resizeRatio,
             INTER_LINEAR);
 
+        dst = Mat::zeros(newFrame.size(), CV_8UC1);
+        
         detectObject(colorFront);
         drawCenterLine(newFrameFilter, colorFront);
         selectObjectLargestArea(dst);
         trackObject(dst,arduinoConnected); // tx2Arduino() implemented inside track object
         displayRASP(dst);
         
-        int c = waitKey(10);
+        int c = waitKey(1);
         if ((char)c == 27) {
             break;
             while (1) {
@@ -108,22 +98,38 @@ void tx2Arduino()
 void detectObject(int colorFront)
 {
     setColor(colorFront);
-    medianBlur(newFrame, newFrameFilter,
-        2 * filterRatio + 1); // filters out noise, filterratio must be odd
+    GaussianBlur(newFrame, newFrameFilter, cv::Size(5, 5), 2*filterRatio+1, 2*filterRatio+1);
     cvtColor(newFrameFilter, newFrameFilter, COLOR_BGR2HSV);
     inRange(newFrameFilter, Scalar(iLowH, iLowS, iLowV),
         Scalar(iHighH, iHighS, iHighV), newFrameThresholded);   
+    erode(newFrameThresholded, newFrameThresholded, cv::Mat(), cv::Point(-1, -1), 1);
+    dilate(newFrameThresholded, newFrameThresholded, cv::Mat(), cv::Point(-1, -1), dilateIter);
 }
+
+void detectObject2(Mat& image, int colorFront)
+{
+    setColor(colorFront);
+    GaussianBlur(image, image, cv::Size(5, 5), 2*filterRatio+1, 2*filterRatio+1);
+    cvtColor(image, image, COLOR_BGR2HSV);
+    inRange(image, Scalar(iLowH, iLowS, iLowV),
+        Scalar(iHighH, iHighS, iHighV), image);   
+    erode(image, image, cv::Mat(), cv::Point(-1, -1), 1);
+    dilate(image, image, cv::Mat(), cv::Point(-1, -1), dilateIter);
+}
+
 
 void drawCenterLine(Mat imageBody, int colorFront) //returns angle of the line
 {
-    Mat imageOUT1(imageResizeOUT.rows, imageResizeOUT.cols, CV_8UC1, Scalar::all(0));
-    Mat imageOUT2(imageResizeOUT.rows, imageResizeOUT.cols, CV_8UC1, Scalar::all(0));
-    Mat imageOUT3(imageResizeOUT.rows, imageResizeOUT.cols, CV_8UC1, Scalar::all(0));
+    Mat imageOUT1(newFrame.rows, newFrame.cols, CV_8UC1, Scalar::all(0));
+    Mat imageOUT2(newFrame.rows, newFrame.cols, CV_8UC1, Scalar::all(0));
+    Mat imageOUT3(newFrame.rows, newFrame.cols, CV_8UC1, Scalar::all(0));
        
     setColor('G'); //cyclnder middle color
     inRange(newFrameFilter, Scalar(iLowH, iLowS, iLowV),
         Scalar(iHighH, iHighS, iHighV), imageBody);
+    erode(imageBody, imageBody, cv::Mat(), cv::Point(-1, -1), 1);
+    dilate(imageBody, imageBody, cv::Mat(), cv::Point(-1, -1), dilateIter);
+    
     Point2f point_mid;
     selectObject2(imageBody,imageOUT1);
     findCenter(imageOUT1, point_mid);
@@ -131,6 +137,9 @@ void drawCenterLine(Mat imageBody, int colorFront) //returns angle of the line
     setColor(colorFront);
     inRange(newFrameFilter, Scalar(iLowH, iLowS, iLowV),
         Scalar(iHighH, iHighS, iHighV), imageBody);
+    erode(imageBody, imageBody, cv::Mat(), cv::Point(-1, -1), 1);
+    dilate(imageBody, imageBody, cv::Mat(), cv::Point(-1, -1), dilateIter);
+    
     Point2f point_front;
     selectObject2(imageBody,imageOUT2);
     findCenter(imageOUT2, point_front);
@@ -154,6 +163,8 @@ void findCenter(Mat image, Point2f& point)
 
 void selectObject2(Mat& imageIN, Mat& imageOUT)
 {
+    vector<vector<Point> > contours; // Vector for storing contour
+    vector<Vec4i> hierarchy;
 
     largest_area = 0;
     int largest_contour_index = 0;
@@ -204,8 +215,12 @@ void drawStraightLine(Mat *img, Point2f p1, Point2f p2)
 
 void selectObjectLargestArea(Mat& dst) //selects the object with largest area
 {
+    vector<vector<Point> > contours; // Vector for storing contour
+    vector<Vec4i> hierarchy;
+    Point_<float> circleCenter; // bounding circle params
     largest_area = 0;
     int largest_contour_index = 0;
+    
     findContours(newFrameThresholded, contours, hierarchy, CV_RETR_CCOMP,
         CV_CHAIN_APPROX_SIMPLE); // Find the contours in the image
     for (int i = 0; i < contours.size(); i++) // iterate through each contour.
@@ -394,7 +409,7 @@ void loadWindows()
 {
     char controlBar[] = "Control Bar";
     namedWindow(controlBar, WINDOW_NORMAL); // create a window called "Control"
-    cvCreateTrackbar("filter", controlBar, &filterRatio, 5); //Hue (0 - 179)
+    cvCreateTrackbar("dilate iteration", controlBar, &filterRatio, 10); //Hue (0 - 179)
     cvCreateTrackbar("LowHue", controlBar, &iLowH, 179); // Hue (0 - 179)
     cvCreateTrackbar("HighHue", controlBar, &iHighH, 179);
     cvCreateTrackbar("LowSat", controlBar, &iLowS, 255); //Saturation (0 - 255)
