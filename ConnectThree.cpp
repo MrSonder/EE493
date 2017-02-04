@@ -3,17 +3,18 @@
 void selectObjectLargestArea(Mat& dst); // filters out the closes object
 void trackObject(Mat dst, bool arduinoConnected);
 void directionData(int& posX, int& posY); // send motor signals
-void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
-void findCenter(Mat image, Point2f& point);
-void selectObject2(Mat& imageIN);
-Mat drawCenterLine2(Mat imageIn, int colorFront);
+Point2f findCenter(Mat image);
+Mat drawCenterLine(Mat imageIn, int colorFront);
 Mat detectObject(Mat image, int colorFront);
+Mat templateExtract(Mat image, int colorFront);
+Mat selectObjectAllign(Mat image, int colorFront);
 
-
+double fillRatio(vector<Point> contour);
 Mat newFrameThresholded;
 Mat dst;
 VideoCapture camera(0);
 
+double thresh=10;
 
 int main(int argc, char* argv[])
 {
@@ -24,10 +25,8 @@ int main(int argc, char* argv[])
         camera >> newFrame; // get a new frame from camera
         resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio,INTER_LINEAR);
 
-        dst = Mat::zeros(newFrame.size(), CV_8UC1);
-
-        newFrameThresholded=drawCenterLine2(newFrame, colorFront);
-        selectObjectLargestArea(dst);
+        templateExtract(newFrame,colorFront);
+        dst=drawCenterLine(newFrame,colorFront);
         trackObject(dst,arduinoConnected); // tx2Arduino() implemented inside track object
         displayRASP(dst);
         
@@ -44,6 +43,14 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+Mat templateExtract(Mat image, int colorFront)
+{
+    Mat imageOUT;
+    double maxval=0;
+    setColor(colorFront);
+    threshold(image, imageOUT, thresh, maxval, THRESH_TOZERO);
+    return imageOUT;
+}
 
 
 Mat thresholdImage(Mat image, int colorFront)
@@ -59,93 +66,95 @@ Mat thresholdImage(Mat image, int colorFront)
     return imageOUT;
 }
 
-Mat drawCenterLine2(Mat imageIn, int colorFront) //returns angle of the line
+
+Mat drawCenterLine(Mat imageIn, int colorFront) //returns angle of the line
 {
     Mat image1,image2;
 
-    image1=thresholdImage(imageIn, 'G');
-    Point2f point_mid;
-    selectObject2(image1);
-    findCenter(image1, point_mid);
+    image1 = selectObjectAllign(imageIn, 'G');
+    Point2f point_mid = findCenter(image1);
 
-    image2=thresholdImage(imageIn, colorFront);
-    Point2f point_front;
-    selectObject2(image2);
-    findCenter(image2, point_front);
+    image2 = selectObjectAllign(imageIn, colorFront);
+    Point2f point_front = findCenter(image2);
 
-    drawStraightLine(&newFrame,point_mid, point_front);
-    
+    drawStraightLine(&imageIn,point_mid,point_front);
+
     image1=image1+image2;
-    resize(image1, image1, Size(), 0.5/resizeRatio, 0.5/resizeRatio, INTER_LINEAR);
-    imshow("Test Window", image1);
-    
-    return image2;
 
+    return image1;
 }
 
-void findCenter(Mat image, Point2f& point)
+Point2f findCenter(Mat image)
 {
+    //returns the center of a binary image
     Moments oMoments = moments(image);
     double dM01 = oMoments.m01;
     double dM10 = oMoments.m10;
     double dArea = oMoments.m00;
     int posX = dM10 / dArea;
     int posY = dM01 / dArea;
-    point=Point(posX,posY);
+    return Point(posX,posY);
 }
 
-void selectObject2(Mat& image)
+Mat selectObjectAllign(Mat image, int colorFront) 
 {
+    //selects the object with smallest angle from a binary image
+    Mat imageSelected = Mat::zeros(newFrame.size(), CV_8UC1);
     vector<vector<Point> > contours; // Vector for storing contour
     vector<Vec4i> hierarchy;
-
-    largest_area = 0;
+    Point_<float> circleCenter; // bounding circle params
+    int largest_area = 0;
     int largest_contour_index = 0;
-    findContours(image, contours, hierarchy, CV_RETR_CCOMP,
-        CV_CHAIN_APPROX_SIMPLE); // Find the contours in the image
+
+    int largest_fillRatio = 0;
+    Mat imageContours = thresholdImage(image, colorFront);
+    imshow("Test Window",imageContours);
+    findContours(imageContours, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+
     for (int i = 0; i < contours.size(); i++) // iterate through each contour.
     {
         double a = contourArea(contours[i], false); //  Find the area of contour
-        if (a > largest_area) {
+        double b = fillRatio(contours[i]);
+        /*if (a > largest_area) {
             largest_area = a;
             largest_contour_index = i; // Store the index of largest contour
+            minEnclosingCircle(contours[i], circleCenter, circleRadius);
+        }*/
+        cout<<a<<"\n";
+        if (contourArea(contours[i], false)>2000){
+        if (b > largest_fillRatio) {
+            largest_fillRatio = b;
+            largest_contour_index = i; // Store the index of largest contour
+            minEnclosingCircle(contours[i], circleCenter, circleRadius);
         }
-    }
+        }
 
-     if (largest_area > 25) {
-         image = Mat::zeros(image.size(), CV_8UC1);
+    }   
+   // if (largest_area > 25) {
+        drawContours(imageSelected, contours, largest_contour_index, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy); 
+        //circle(newFrame, circleCenter, circleRadius, Scalar(255, 0, 0), 2, 8, 0);
+        object_exist = true;
+   /* }
+    else {
+        object_exist = false;
+    }*/
 
-        drawContours(
-            image, contours, largest_contour_index, Scalar(255, 0, 0), CV_FILLED, 8,
-            hierarchy); // Draw the largest contour using previously stored index.
-     }
+
+    return imageSelected;
 }
 
-void drawStraightLine(Mat *img, Point2f p1, Point2f p2)
+
+double fillRatio(vector<Point> contour)  //unused
 {
-        Point2f p, q;
-        // Check if the line is a vertical line because vertical lines don't have slope
-        if (p1.x != p2.x)
-        {
-                p.x = 0;
-                q.x = img->cols;
-                // Slope equation (y1 - y2) / (x1 - x2)
-                float m = (p1.y - p2.y) / (p1.x - p2.x);
-                // Line equation:  y = mx + b
-                float b = p1.y - (m * p1.x);
-                p.y = m * p.x + b;
-                q.y = m * q.x + b;
-        }
-        else
-        {
-                p.x = q.x = p2.x;
-                p.y = 0;
-                q.y = img->rows;
-        }
-
-        line(*img, p, q, Scalar(255, 100, 100), 1);
-
-        angle =(atan((p1.y - p2.y) / (p1.x - p2.x)) * 180 / 3.1415);
+    Point_<float> circleCenter;
+    double areaCont = contourArea(contour, false); 
+    minEnclosingCircle(contour, circleCenter, circleRadius);
+    double circleEnvelopeArea = PI * circleRadius * circleRadius;
+    double fillRatio = areaCont / (0.9 * circleEnvelopeArea);
+    angle = acos(fillRatio) * 180.0 / 3.1412;
+    if (fillRatio > 1.0)
+        angle = 0;
+    return fillRatio;
 }
 
 
@@ -181,17 +190,6 @@ void selectObjectLargestArea(Mat& dst) //selects the object with largest area
     }
 }
 
-
-
-int fillRatio()  //unused
-{
-    float circleEnvelopeArea = 3.1412 * circleRadius * circleRadius;
-    float fillRatio = largest_area / (0.9 * circleEnvelopeArea);
-    angle = acos(fillRatio) * 180.0 / 3.1412;
-    if (fillRatio > 1.0)
-        angle = 0;
-    return fillRatio;
-}
 
 
 void trackObject(Mat dst, bool arduinoConnected)

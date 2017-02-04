@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define PI 3.14159
 using namespace cv;
 using namespace std;
 
@@ -18,14 +19,15 @@ void setColor(int colorFront);
 void tx2Arduino();
 int getFPS();
 int getDistance();
-
+void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
+int getAngle();
 
 time_t start;
 Mat newFrame;
 string positionText = "WAITING FOR DATA";
 FILE* file; // object to open device file
 
-int offset = 25; // 24=-1
+int offset = 0; // 24=-1
 int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;
 int filterRatio = 1;
 int dilateIter = 1;
@@ -33,10 +35,10 @@ int direction;
 bool object_exist = false;
 int largest_area = 0;
 float circleRadius;
-int lockToleranceInt = 20;
+int lockToleranceInt = 75;
 float angle;
-
-float resizeRatio = 0.4;
+float slopeLine;
+float resizeRatio = 0.5;
 int colorFront='B';
 bool arduinoConnected=false;
 
@@ -72,8 +74,8 @@ void directionData(int& posX, int& posY)
         direction = 11;
 
         statusBar.str(""); // clear string stream
-        statusBar << int(getDistance());
-        positionText.append("  Dist.: ");
+        statusBar << int(getAngle());
+        positionText.append("  Angle: ");
         positionText.append(statusBar.str());
     }
     else if (posX > highRange) {
@@ -94,6 +96,34 @@ void directionData(int& posX, int& posY)
         positionText.assign("Stop!");
         direction = 00;
     }
+}
+
+void drawStraightLine(Mat *img, Point2f p1, Point2f p2)
+{
+        Point2f p, q;
+        // Check if the line is a vertical line because vertical lines don't have slope
+        if (p1.x != p2.x)
+        {
+                p.x = 0;
+                q.x = img->cols;
+                // Slope equation (y1 - y2) / (x1 - x2)
+                float m = (p1.y - p2.y) / (p1.x - p2.x);
+                // Line equation:  y = mx + b
+                float b = p1.y - (m * p1.x);
+                p.y = m * p.x + b;
+                q.y = m * q.x + b;
+        }
+        else
+        {
+                p.x = q.x = p2.x;
+                p.y = 0;
+                q.y = img->rows;
+        }
+
+        line(*img, p, q, Scalar(255, 100, 100), 1);
+        
+                angle=atan((p1.y - p2.y) / (p1.x - p2.x))*180/3.14;
+
 }
 
 int getFPS()
@@ -156,17 +186,16 @@ void setColor(int colorFront)
 void loadWindows()
 {
     char controlBar[] = "Control Bar";
-    namedWindow(controlBar, WINDOW_NORMAL); // create a window called "Control"
-    cvCreateTrackbar("dilate iteration", controlBar, &filterRatio, 10); //Hue (0 - 179)
+    namedWindow(controlBar, 1); // create a window called "Control"
+    /*cvCreateTrackbar("dilate iteration", controlBar, &filterRatio, 10); //Hue (0 - 179)
     cvCreateTrackbar("LowHue", controlBar, &iLowH, 179); // Hue (0 - 179)
     cvCreateTrackbar("HighHue", controlBar, &iHighH, 179);
     cvCreateTrackbar("LowSat", controlBar, &iLowS, 255); //Saturation (0 - 255)
     cvCreateTrackbar("HighSat", controlBar, &iHighS, 255);
     cvCreateTrackbar("LowVal", controlBar, &iLowV, 255); //Value (0 - 255)
     cvCreateTrackbar("HighVal", controlBar, &iHighV, 255);
-    cvCreateTrackbar("Margin", controlBar, &lockToleranceInt,
-        50); // Value (0 - 255)
-    cvCreateTrackbar("Offset", controlBar, &offset, 50); // Value (0 - 255)
+    cvCreateTrackbar("Margin", controlBar, &lockToleranceInt,50); // Value (0 - 255)
+    cvCreateTrackbar("Offset", controlBar, &offset, 50); // Value (0 - 255)*/
 }
 
 int getDistance()
@@ -183,5 +212,9 @@ int getDistance()
 
     int distance = (distance1 > 110) ? int(distance2) : int(distance1);
 
-    return distance;
+    return distance;  //modified to test slopeLine
 }
+
+int getAngle(){
+    return angle;
+    }
