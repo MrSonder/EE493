@@ -177,7 +177,7 @@ void setColor(int colorFront)
     case int('Y'):
         iLowH = 15;
         iHighH = 70;
-        iLowS = 50;
+        iLowS = 5;
         iHighS = 255;
         iLowV = 35;
         iHighV = 255;

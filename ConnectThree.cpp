@@ -92,7 +92,8 @@ Mat selectObjectAllign(Mat image, int colorFront, int object)
     vector<vector<Point> > contours; // Vector for storing contour
     vector<Vec4i> hierarchy;
     Point_<float> circleCenter; // bounding circle params
-    Rect boundRect;
+    //Rect boundRect;
+    RotatedRect boundRect;
     int largest_area = 0;
     int largest_contour_index = 0;
     int largest_fillRatio = 0;
@@ -110,7 +111,7 @@ Mat selectObjectAllign(Mat image, int colorFront, int object)
             largest_fillRatio = b;
             largest_contour_index = i; // Store the index of largest contour
             minEnclosingCircle(contours[i], circleCenter, circleRadius);
-            boundRect = boundingRect(contours[i]);
+            boundRect = minAreaRect(contours[i]);
         }
         }
 
