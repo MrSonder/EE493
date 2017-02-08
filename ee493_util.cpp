@@ -21,16 +21,20 @@ int getFPS();
 int getDistance();
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
 int getAngle();
+void trackObject(Mat dst, bool arduinoConnected);
 
 time_t start;
 Mat newFrame;
 string positionText = "WAITING FOR DATA";
 FILE* file; // object to open device file
+Mat newFrameThresholded;
+Mat dst;
+VideoCapture camera(0);
 
 int offset = 0; // 24=-1
 int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;
 int filterRatio = 1;
-int dilateIter = 1;
+int dilateIter = 2;
 int direction;
 bool object_exist = false;
 int largest_area = 0;
@@ -137,47 +141,54 @@ int getFPS()
 
 void displayRASP(Mat dst)
 {
+   
     namedWindow("Denoised", 1);
     resize(newFrame, newFrame, Size(), 0.5 / resizeRatio, 0.5 / resizeRatio, INTER_LINEAR);
     displayStatusBar("Denoised", positionText, 0);
     imshow("Denoised", newFrame); // show camera input at thr. window in HSV
     imshow("Control Bar", dst); // show camera input at thr. window in HSV
     namedWindow("Test Window", 1);
+    moveWindow("Denoised", 50, 500);
+    moveWindow("Control Bar", 450, 500);
+    moveWindow("Test Window", 850, 500);
 }
 
 void setColor(int colorFront)
 {
     switch (colorFront) {
     case int('B'):
-        iLowH = 90;
+        iLowH = 70;
         iHighH = 110;
-        iLowS = 120;
-        iHighS = 255;
-        iLowV = 150;
-        iHighV = 255;
-        break;
-    case int('R'):
-        iLowH = 144;
-        iHighH = 179;
-        iLowS = 72;
-        iHighS = 255;
-        iLowV = 35;
-        iHighV = 255;
-        break;
-    case int('Y'):
-        iLowH = 0;
-        iHighH = 40;
         iLowS = 0;
         iHighS = 255;
-        iLowV = 220;
+        iLowV = 35;
         iHighV = 255;
         break;
-    case int('G'):
-        iLowH = 50;
-        iHighH = 75;
-        iLowS = 72;
+
+    case int('R'):
+        iLowH = 110;
+        iHighH = 179;
+        iLowS = 15;
         iHighS = 255;
         iLowV = 35;
+        iHighV = 255;
+        break;
+
+    case int('Y'):
+        iLowH = 15;
+        iHighH = 70;
+        iLowS = 50;
+        iHighS = 255;
+        iLowV = 35;
+        iHighV = 255;
+        break;
+
+    case int('G'):
+        iLowH = 50;
+        iHighH = 85;
+        iLowS = 0;
+        iHighS = 255;
+        iLowV = 0;
         iHighV = 255;
         break;
     }
@@ -218,3 +229,22 @@ int getDistance()
 int getAngle(){
     return angle;
     }
+
+void trackObject(Mat dst, bool arduinoConnected)
+{
+    if (!object_exist) {
+        positionText.assign("Searching!");
+        return;
+    }
+
+    Moments oMoments = moments(dst);
+    double dM01 = oMoments.m01;
+    double dM10 = oMoments.m10;
+    double dArea = oMoments.m00;
+    int posX = dM10 / dArea;
+    int posY = dM01 / dArea;
+    directionData(posX, posY); // enable motor output
+
+    if (arduinoConnected)
+        tx2Arduino();
+}
