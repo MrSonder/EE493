@@ -70,18 +70,18 @@ Mat drawCenterLine(Mat imageIn, int colorFront)
 {
     // draws a line throught the object and returns angle of the line
     Mat image1,image2;
-
+    Mat image3,image4;
     image1 = selectObjectAllign(imageIn, 'Y', 'R');
     Point2f point_mid = findCenter(image1);
 
     image2 = selectObjectAllign(imageIn, colorFront, 'C');
     Point2f point_front = findCenter(image2);
 
-    
+  
     drawStraightLine(&imageIn,point_mid,point_front);
 
-    image1=image1+image2;
-    imshow("Test Window",image1);
+    imageIn.copyTo(image3, image2);
+    imshow("Test Window",image3);
     return image1;
 }
 
@@ -99,8 +99,6 @@ Mat selectObjectAllign(Mat image, int colorFront, int object)
     int largest_fillRatio = 0;
 
     Mat imageContours = thresholdImage(image, colorFront, false);
-    
-    //findContours(imageContours, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
     findContours(imageContours, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE );
 
     for (int i = 0; i < contours.size(); i++) // iterate through each contour.
@@ -116,14 +114,9 @@ Mat selectObjectAllign(Mat image, int colorFront, int object)
         }
 
     }   
-        drawContours(imageSelected, contours, largest_contour_index, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
+    drawContours(imageSelected, contours, largest_contour_index, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
         
-        if (object=='R'){
-            //rectangle( newFrame, boundRect, Scalar(255, 0, 0), 2, 8, 0 );
-        }
-        else if (object=='C')
-            circle(newFrame, circleCenter, circleRadius, Scalar(255, 0, 0), 2, 8, 0);
-        object_exist = true;
+    object_exist = true;
     return imageSelected;
 }
 
@@ -189,8 +182,8 @@ Mat thresholdImage(Mat image, int colorFront, bool calibration )
     cvtColor(imageOUT, imageOUT, COLOR_BGR2HSV);
     inRange(imageOUT, Scalar(iLowH, iLowS, iLowV),
         Scalar(iHighH, iHighS, iHighV), imageOUT);   
-    erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
-    //dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
+    erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 6);
+    dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 4);
     medianBlur(imageOUT, imageOUT, 5);
     return imageOUT;
 }
@@ -199,15 +192,15 @@ Mat thresholdImage(Mat image, int colorFront, bool calibration )
 double fillRatio(vector<Point> contour, int object)
 {
     Point_<float> circleCenter;
-    Rect boundRect;
+    RotatedRect boundRect;
     double areaCont = contourArea(contour, false); 
     double fillRatio=0;
     //area of rectange : r.width * r.height 
 
     if (object == 'R'){
-    boundRect = boundingRect(contour);
-    double rectEnvelopeArea = boundRect.area();
-    fillRatio = areaCont / rectEnvelopeArea ;
+    boundRect = minAreaRect(contour);
+    double rectEnvelopeArea =boundRect.size.width * boundRect.size.height;
+    fillRatio = abs(boundRect.angle);
     }
     else if (object == 'C'){
     minEnclosingCircle(contour, circleCenter, circleRadius);
@@ -218,4 +211,3 @@ double fillRatio(vector<Point> contour, int object)
 
     return fillRatio;
 }
-

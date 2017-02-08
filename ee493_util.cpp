@@ -7,6 +7,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <cmath>
 
 #define PI 3.14159
 using namespace cv;
@@ -20,7 +21,6 @@ void tx2Arduino();
 int getFPS();
 int getDistance();
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
-int getAngle();
 void trackObject(Mat dst, bool arduinoConnected);
 
 time_t start;
@@ -42,7 +42,7 @@ float circleRadius;
 int lockToleranceInt = 75;
 float angle;
 float slopeLine;
-float resizeRatio = 0.5;
+float resizeRatio = 0.6;
 int colorFront='B';
 bool arduinoConnected=false;
 
@@ -71,18 +71,19 @@ void directionData(int& posX, int& posY)
 
     ostringstream statusBar;
     positionText.assign("");
-    if (posX < highRange && posX > lowRange) {
+   // if (posX < highRange && posX > lowRange) {
         positionText.assign("Mid    FPS :");
         statusBar << int(getFPS());
         positionText.append(statusBar.str());
         direction = 11;
 
         statusBar.str(""); // clear string stream
-        statusBar << int(getAngle());
+        //statusBar << int(getAngle());
+        statusBar << int(angle);
         positionText.append("  Angle: ");
         positionText.append(statusBar.str());
-    }
-    else if (posX > highRange) {
+    //}
+/*    else if (posX > highRange) {
         positionText.assign("Right  Offset:");
         statusBar << int(posX - mid);
         positionText.append(statusBar.str());
@@ -99,7 +100,7 @@ void directionData(int& posX, int& posY)
     if (posY > stopRange) {
         positionText.assign("Stop!");
         direction = 00;
-    }
+    }*/
 }
 
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2)
@@ -126,7 +127,7 @@ void drawStraightLine(Mat *img, Point2f p1, Point2f p2)
 
         line(*img, p, q, Scalar(255, 100, 100), 1);
         
-                angle=atan((p1.y - p2.y) / (p1.x - p2.x))*180/3.14;
+        //angle=atan((p1.y - p2.y) / (p1.x - p2.x))*180/3.1415;
 
 }
 
@@ -226,9 +227,6 @@ int getDistance()
     return distance;  //modified to test slopeLine
 }
 
-int getAngle(){
-    return angle;
-    }
 
 void trackObject(Mat dst, bool arduinoConnected)
 {
