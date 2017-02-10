@@ -22,7 +22,9 @@ int getFPS();
 int getDistance();
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
 void trackObject(Mat dst, bool arduinoConnected);
+//void testWindow(Mat image);
 
+void testWindow(Mat image, String title);
 time_t start;
 Mat newFrame;
 string positionText = "WAITING FOR DATA";
@@ -42,7 +44,7 @@ float circleRadius;
 int lockToleranceInt = 75;
 float angle;
 float slopeLine;
-float resizeRatio = 0.6;
+float resizeRatio = 0.5;
 int colorFront='B';
 bool arduinoConnected=false;
 
@@ -144,14 +146,22 @@ void displayRASP(Mat dst)
 {
    
     namedWindow("Denoised", 1);
-    resize(newFrame, newFrame, Size(), 0.5 / resizeRatio, 0.5 / resizeRatio, INTER_LINEAR);
+    resize(newFrame, newFrame, Size(), 0.6 / resizeRatio, 0.6 / resizeRatio, INTER_LINEAR);
     displayStatusBar("Denoised", positionText, 0);
     imshow("Denoised", newFrame); // show camera input at thr. window in HSV
     imshow("Control Bar", dst); // show camera input at thr. window in HSV
-    namedWindow("Test Window", 1);
-    moveWindow("Denoised", 50, 500);
-    moveWindow("Control Bar", 450, 500);
-    moveWindow("Test Window", 850, 500);
+
+    moveWindow("Denoised", 50, 250);
+    moveWindow("Control Bar", 450, 250);
+}
+
+void testWindow(Mat image, String title)
+{
+    //char title[] = "Test";
+    namedWindow(title, 1);
+    moveWindow(title, 850, 250);
+    resize(image, image, Size(), 0.6 / resizeRatio, 0.6 / resizeRatio, INTER_AREA);
+    imshow(title, image); 
 }
 
 void setColor(int colorFront)
@@ -160,9 +170,9 @@ void setColor(int colorFront)
     case int('B'):
         iLowH = 70;
         iHighH = 110;
-        iLowS = 0;
+        iLowS = 50;
         iHighS = 255;
-        iLowV = 35;
+        iLowV = 50;
         iHighV = 255;
         break;
 
@@ -178,7 +188,7 @@ void setColor(int colorFront)
     case int('Y'):
         iLowH = 15;
         iHighH = 70;
-        iLowS = 5;
+        iLowS = 50;
         iHighS = 255;
         iLowV = 35;
         iHighV = 255;
