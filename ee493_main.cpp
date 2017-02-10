@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
         resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio,INTER_LINEAR);
 
         //templateExtract(newFrame, colorFront);
-
+        templateMatching(newFrame);
         dst=drawCenterLine(newFrame,colorFront);
         trackObject(dst,arduinoConnected); // tx2Arduino() implemented inside track object
 
@@ -62,7 +62,7 @@ void rectangleMask(Mat image, RotatedRect rectangle)
     Mat imageOut;
 
     newFrame.copyTo(imageOut, imageMask);
-    dispImage(imageOut, "masked" ,4);
+    //dispImage(imageOut, "masked" ,4);
 }
 
 Mat selectObject(Mat image, int colorFront, int object) 

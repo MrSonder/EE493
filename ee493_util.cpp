@@ -215,6 +215,7 @@ Mat thresholdImage(Mat image, int colorFront, bool calibration )
     erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
     medianBlur(imageOUT, imageOUT, 5);
     erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 3);
+    
     //dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1),1);
     
     return imageOUT;
