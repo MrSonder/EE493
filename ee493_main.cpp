@@ -41,25 +41,6 @@ int main(int argc, char* argv[])
 }
 
 
-Mat drawCenterLine(Mat imageIn, int colorFront) 
-{
-    // draws a line throught the object and returns angle of the line
-    Mat image1,image2;
-    Mat image3,image4;
-    image1 = selectObject(imageIn, 'Y', 'R');
-    Point2f point_mid = findCenter(image1);
-
-    image2 = selectObject(imageIn, colorFront, 'C');
-    Point2f point_front = findCenter(image2);
-
-    image4 = Mat::zeros(imageIn.size(), CV_8UC3);
-
-    drawStraightLine(&image4,point_mid,point_front);
-
-    imageIn = imageIn + image4;
-    return image1;
-}
-
 void templateExtract(Mat imageIn, int color)
 {
     Mat image1,image2;
@@ -69,13 +50,27 @@ void templateExtract(Mat imageIn, int color)
     dispImage(image2, "Mask",4);
 }
 
+void rectangleMask(Mat image, RotatedRect rectangle)
+{
+    Mat imageRect = Mat::zeros( image.size(), CV_8UC1 );
+    Point2f rect_points[4]; rectangle.points( rect_points );
+    for( int j = 0; j < 4; j++ )
+          line( imageRect, rect_points[j], rect_points[(j+1)%4], Scalar(255, 0, 0));
+
+    Mat imageMask = largestArea(imageRect, 'N');
+
+    Mat imageOut;
+
+    newFrame.copyTo(imageOut, imageMask);
+    dispImage(imageOut, "masked" ,4);
+}
+
 Mat selectObject(Mat image, int colorFront, int object) 
 {
     Mat imageContours = thresholdImage(image, colorFront, false);
     Mat imageSelected = largestArea(imageContours, object);
     return imageSelected;
 }
-
 
 Mat largestArea(Mat image, int object)
 {
@@ -115,22 +110,6 @@ Mat largestArea(Mat image, int object)
 
 
 
-void rectangleMask(Mat image, RotatedRect rectangle)
-{
-    Mat imageRect = Mat::zeros( image.size(), CV_8UC1 );
-    Point2f rect_points[4]; rectangle.points( rect_points );
-
-    for( int j = 0; j < 4; j++ )
-          line( imageRect, rect_points[j], rect_points[(j+1)%4], Scalar(255, 0, 0));
-
-    Mat imageMask = largestArea(imageRect, 'N');
-
-    Mat imageOut;
-
-    newFrame.copyTo(imageOut, imageMask);
-}
-
-
 Point2f findCenter(Mat image)
 {
     //returns the center of a binary image
@@ -142,8 +121,6 @@ Point2f findCenter(Mat image)
     int posY = dM01 / dArea;
     return Point(posX,posY);
 }
-
-
 
 
 double fillRatio(vector<Point> contour, int object)
@@ -167,4 +144,25 @@ double fillRatio(vector<Point> contour, int object)
     }
 
     return fillRatio;
+}
+
+Mat drawCenterLine(Mat imageIn, int colorFront) 
+{
+    // draws a line throught the object and returns angle of the line
+    Mat image1,image2;
+    Mat image3,image4;
+    image1 = selectObject(imageIn, 'Y', 'R');
+    Point2f point_mid = findCenter(image1);
+
+    //putText(imageIn, format("Angle : %d",angle), point_mid, FONT_HERSHEY_COMPLEX_SMALL, 0.5, Scalar(0, 0, 0));
+
+    image2 = selectObject(imageIn, colorFront, 'C');
+    Point2f point_front = findCenter(image2);
+
+    image4 = Mat::zeros(imageIn.size(), CV_8UC3);
+
+    drawStraightLine(&image4,point_mid,point_front);
+
+    imageIn = imageIn + image4;
+    return image1;
 }

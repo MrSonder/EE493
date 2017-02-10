@@ -162,7 +162,7 @@ void drawStraightLine(Mat *img, Point2f p1, Point2f p2)
 
         line(*img, p, q, Scalar(255, 100, 100), 1);
         
-        //angle=atan((p1.y - p2.y) / (p1.x - p2.x))*180/3.1415;
+        angle=atan((p1.y - p2.y) / (p1.x - p2.x))*180/3.1415;
 
 }
 
