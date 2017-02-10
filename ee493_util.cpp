@@ -13,7 +13,7 @@
 using namespace cv;
 using namespace std;
 
-void loadWindows(); // loads control window
+
 void directionData(int& posX, int& posY); // send motor signals
 void displayRASP(Mat dst);
 void setColor(int colorFront);
@@ -22,9 +22,12 @@ int getFPS();
 int getDistance();
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
 void trackObject(Mat dst, bool arduinoConnected);
-//void testWindow(Mat image);
+void calibrateThreshold(int color);
 
-void testWindow(Mat image, String title);
+Mat thresholdImage(Mat image, int colorFront, bool calibration );
+
+void dispImage(Mat image, String title, int loc);
+
 time_t start;
 Mat newFrame;
 string positionText = "WAITING FOR DATA";
@@ -56,6 +59,36 @@ void tx2Arduino()
     fclose(file);
 }
 
+
+void calibrateThreshold(int color){
+    setColor(color);
+    char windowTitle[] = "Calibration";
+    namedWindow(windowTitle, 1);
+    moveWindow(windowTitle, 500,500);
+    cvCreateTrackbar("dilate iteration", windowTitle, &filterRatio, 10);
+    cvCreateTrackbar("LowHue", windowTitle, &iLowH, 179);
+    cvCreateTrackbar("HighHue", windowTitle, &iHighH, 179);
+    cvCreateTrackbar("LowSat", windowTitle, &iLowS, 255); 
+    cvCreateTrackbar("HighSat", windowTitle, &iHighS, 255);
+    cvCreateTrackbar("LowVal", windowTitle, &iLowV, 255);
+    cvCreateTrackbar("HighVal", windowTitle, &iHighV, 255);
+    Mat image;
+    while (true) {
+        camera >> newFrame; // get a new frame from camera
+        resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio,INTER_LINEAR);
+
+        image = thresholdImage(newFrame, 'B', true);
+        dispImage(image, "Calibration", 2);
+        int c = waitKey(10);
+        if ((char)c == 27) {
+            cvDestroyWindow(windowTitle);
+            exit(0);
+        }
+
+    }
+}
+
+
 void directionData(int& posX, int& posY)
 {
     cv::Size s = newFrame.size();
@@ -66,11 +99,11 @@ void directionData(int& posX, int& posY)
     int highRange = mid * (1 + lockTolerance) + (offset - 25);
     int stopRange = 0.8 * height; // adjust the constant for stop range
 
-    line(newFrame, Point(lowRange, stopRange), Point(highRange, stopRange),
+/*    line(newFrame, Point(lowRange, stopRange), Point(highRange, stopRange),
         Scalar(100, 100, 255), 2, 4);
     line(newFrame, Point(mid, height), Point(mid, stopRange),
         Scalar(100, 100, 255), 2, 4);
-
+*/
     ostringstream statusBar;
     positionText.assign("");
    // if (posX < highRange && posX > lowRange) {
@@ -155,13 +188,36 @@ void displayRASP(Mat dst)
     moveWindow("Control Bar", 450, 250);
 }
 
-void testWindow(Mat image, String title)
+void dispImage(Mat image, String title, int loc)
 {
-    //char title[] = "Test";
+    // 0 2 4
+    // 1 3 5
     namedWindow(title, 1);
-    moveWindow(title, 850, 250);
-    resize(image, image, Size(), 0.6 / resizeRatio, 0.6 / resizeRatio, INTER_AREA);
-    imshow(title, image); 
+    resize(image, image, Size(), 0.55 / resizeRatio, 0.55 / resizeRatio, INTER_AREA);
+    imshow(title, image);
+    int x = 50 + (loc/2)*380;
+    int y = 30 + (loc%2)*370;
+    moveWindow(title, x, y);
+}
+
+Mat thresholdImage(Mat image, int colorFront, bool calibration )
+{
+    Mat imageOUT=image.clone();
+    if (!calibration)
+    {
+        setColor(colorFront);
+    }
+    //GaussianBlur(imageOUT, imageOUT, cv::Size(5, 5), 3, 3);
+    cvtColor(imageOUT, imageOUT, COLOR_BGR2HSV);
+
+    inRange(imageOUT, Scalar(iLowH, iLowS, iLowV),
+        Scalar(iHighH, iHighS, iHighV), imageOUT);   
+    erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
+    medianBlur(imageOUT, imageOUT, 5);
+    erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 3);
+    //dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1),1);
+    
+    return imageOUT;
 }
 
 void setColor(int colorFront)
@@ -203,21 +259,6 @@ void setColor(int colorFront)
         iHighV = 255;
         break;
     }
-}
-
-void loadWindows()
-{
-    char controlBar[] = "Control Bar";
-    namedWindow(controlBar, 1); // create a window called "Control"
-    /*cvCreateTrackbar("dilate iteration", controlBar, &filterRatio, 10); //Hue (0 - 179)
-    cvCreateTrackbar("LowHue", controlBar, &iLowH, 179); // Hue (0 - 179)
-    cvCreateTrackbar("HighHue", controlBar, &iHighH, 179);
-    cvCreateTrackbar("LowSat", controlBar, &iLowS, 255); //Saturation (0 - 255)
-    cvCreateTrackbar("HighSat", controlBar, &iHighS, 255);
-    cvCreateTrackbar("LowVal", controlBar, &iLowV, 255); //Value (0 - 255)
-    cvCreateTrackbar("HighVal", controlBar, &iHighV, 255);
-    cvCreateTrackbar("Margin", controlBar, &lockToleranceInt,50); // Value (0 - 255)
-    cvCreateTrackbar("Offset", controlBar, &offset, 50); // Value (0 - 255)*/
 }
 
 int getDistance()
