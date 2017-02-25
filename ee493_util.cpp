@@ -8,35 +8,36 @@
 #include <stdlib.h>
 #include <time.h>
 #include <cmath>
+#include <unistd.h>
 
 #define PI 3.14159
 using namespace cv;
 using namespace std;
 
+float resizeRatio = 0.5;
+int colorFront='B';
 
-void directionData(int& posX, int& posY); // send motor signals
-void displayRASP(Mat dst);
-void setColor(int colorFront);
-void tx2Arduino(string data);
+Point2f drawCenterLine(Mat imageIn, int colorFront);
+Mat getObjectOfColor(Mat image, int colorFront, int object);
+Mat getLargestArea(Mat image, int object);
+void goTowardsObject(Mat img, int colorFront, bool ArduinoConnected);
+void statusBar(Point2f center);
+
+Point2f findCenter(Mat image);
+Mat thresholdImage(Mat image, int colorFront, bool calibration );
+double fillRatio(vector<Point> contour, int object);
 int getFPS();
 int getDistance();
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
 void calibrateThreshold(int color);
 void txTerminal(string data);
-Mat thresholdImage(Mat image, int colorFront, bool calibration );
-
 void dispImage(Mat image, String title, int loc);
-
-
-   
+void setColor(int colorFront);
+void tx2Arduino(string data);
 
 time_t start;
 Mat newFrame;
-string positionText = "WAITING FOR DATA";
-FILE* file; // object to open device file
-Mat newFrameThresholded;
-Mat dst;
-
+string positionText = "";
 VideoCapture camera(0);
 
 int offset = 0; // 24=-1
@@ -50,15 +51,11 @@ float circleRadius;
 int lockToleranceInt = 75;
 float angle;
 float slopeLine;
-float resizeRatio = 0.5;
-int colorFront='B';
-bool arduinoConnected=false;
-
 
 void txArduino(string data)
 {
+    FILE* file;
     file = fopen("/dev/ttyUSB0", "w");
-    printf("%s\n", data.c_str());
     fprintf(file, "%s\r", data.c_str()); // Writing to the file
     fclose(file);
 }
@@ -66,6 +63,24 @@ void txArduino(string data)
 void txTerminal(string data)
 {
     printf("%s\n", data.c_str());
+}
+
+
+Mat thresholdImage(Mat image, int colorFront, bool calibration )
+{
+    
+    if (!calibration)
+        setColor(colorFront);
+    
+    Mat imageOUT=image.clone();
+    cvtColor(imageOUT, imageOUT, COLOR_BGR2HSV);
+    inRange(imageOUT, Scalar(iLowH, iLowS, iLowV),
+        Scalar(iHighH, iHighS, iHighV), imageOUT);   
+    erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
+    medianBlur(imageOUT, imageOUT, 5);
+    //erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 3);
+    //dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1),1);
+    return imageOUT;
 }
 
 void calibrateThreshold(int color){
@@ -96,56 +111,6 @@ void calibrateThreshold(int color){
     }
 }
 
-
-void directionData(int& posX, int& posY)
-{
-    cv::Size s = newFrame.size();
-    float height = s.height;
-    int mid = s.width / 2;
-    float lockTolerance = lockToleranceInt / 100.0;
-    int lowRange = mid * (1 - lockTolerance) + (offset - 25);
-    int highRange = mid * (1 + lockTolerance) + (offset - 25);
-    int stopRange = 0.8 * height; // adjust the constant for stop range
-
-/*    line(newFrame, Point(lowRange, stopRange), Point(highRange, stopRange),
-        Scalar(100, 100, 255), 2, 4);
-    line(newFrame, Point(mid, height), Point(mid, stopRange),
-        Scalar(100, 100, 255), 2, 4);
-*/
-    ostringstream statusBar;
-    positionText.assign("");
-   // if (posX < highRange && posX > lowRange) {
-        positionText.assign("Mid    FPS :");
-        statusBar << int(getFPS());
-        positionText.append(statusBar.str());
-        direction = 11;
-
-        statusBar.str(""); // clear string stream
-        //statusBar << int(getAngle());
-        statusBar << int(angle);
-        positionText.append("  Angle: ");
-        positionText.append(statusBar.str());
-    //}
-/*    else if (posX > highRange) {
-        positionText.assign("Right  Offset:");
-        statusBar << int(posX - mid);
-        positionText.append(statusBar.str());
-        direction = 10;
-    }
-
-    else if (posX < lowRange) {
-        positionText.assign("Left   Offset:");
-        statusBar << int(mid - posX);
-        positionText.append(statusBar.str());
-        direction = 01;
-    }
-
-    if (posY > stopRange) {
-        positionText.assign("Stop!");
-        direction = 00;
-    }*/
-}
-
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2)
 {
         Point2f p, q;
@@ -170,7 +135,7 @@ void drawStraightLine(Mat *img, Point2f p1, Point2f p2)
 
         line(*img, p, q, Scalar(255, 100, 100), 1);
         
-        angle=atan((p1.y - p2.y) / (p1.x - p2.x))*180/3.1415;
+        angle=atan((p1.y - p2.y) / (p1.x - p2.x))*180/PI;
 
 }
 
@@ -183,18 +148,6 @@ int getFPS()
     return fps;
 }
 
-void displayRASP(Mat dst)
-{
-   
-    namedWindow("Denoised", 1);
-    resize(newFrame, newFrame, Size(), 0.6 / resizeRatio, 0.6 / resizeRatio, INTER_LINEAR);
-    displayStatusBar("Denoised", positionText, 0);
-    imshow("Denoised", newFrame); // show camera input at thr. window in HSV
-    imshow("Control Bar", dst); // show camera input at thr. window in HSV
-
-    moveWindow("Denoised", 50, 250);
-    moveWindow("Control Bar", 450, 250);
-}
 
 void dispImage(Mat image, String title, int loc)
 {
@@ -206,27 +159,6 @@ void dispImage(Mat image, String title, int loc)
     int x = 50 + (loc/2)*380;
     int y = 30 + (loc%2)*370;
     moveWindow(title, x, y);
-}
-
-Mat thresholdImage(Mat image, int colorFront, bool calibration )
-{
-    Mat imageOUT=image.clone();
-    if (!calibration)
-    {
-        setColor(colorFront);
-    }
-    //GaussianBlur(imageOUT, imageOUT, cv::Size(5, 5), 3, 3);
-    cvtColor(imageOUT, imageOUT, COLOR_BGR2HSV);
-
-    inRange(imageOUT, Scalar(iLowH, iLowS, iLowV),
-        Scalar(iHighH, iHighS, iHighV), imageOUT);   
-    erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
-    medianBlur(imageOUT, imageOUT, 5);
-    //erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 3);
-    
-    //dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1),1);
-    
-    return imageOUT;
 }
 
 void setColor(int colorFront)
@@ -287,27 +219,64 @@ int getDistance()
     return distance;  //modified to test slopeLine
 }
 
-/*
-void trackObject(Mat dst, bool arduinoConnected)
+double fillRatio(vector<Point> contour, int object)
 {
-    
-    if (!object_exist) {
-        positionText.assign("Searching!");
-        return;
+    Point_<float> circleCenter;
+    RotatedRect boundRect;
+    double areaCont = contourArea(contour, false); 
+    double fillRatio=0;
+    //area of rectange : r.width * r.height 
+
+    if (object == 'R'){
+    boundRect = minAreaRect(contour);
+    double rectEnvelopeArea =boundRect.size.width * boundRect.size.height;
+    fillRatio = abs(boundRect.angle);
     }
-    
+    else if (object == 'C'){
+    minEnclosingCircle(contour, circleCenter, circleRadius);
+    double circleEnvelopeArea = PI * circleRadius * circleRadius;
+    fillRatio = areaCont / (0.9 * circleEnvelopeArea);
+    //angle = acos(fillRatio) * 180.0 / 3.1412;
+    }
 
-    Moments oMoments = moments(dst);
-    double dM01 = oMoments.m01;
-    double dM10 = oMoments.m10;
-    double dArea = oMoments.m00;
-    int posX = dM10 / dArea;
-    int posY = dM01 / dArea;
-    directionData(posX, posY); // enable motor output
-
-    if (arduinoConnected)
-        tx2Arduino();
+    return fillRatio;
 }
 
 
-*/
+Point2f findCenter(Mat image)
+{
+    //returns the center of a binary image
+    Moments oMoments = moments(image);
+    double dM01 = oMoments.m01;
+    double dM10 = oMoments.m10;
+    double dArea = oMoments.m00;
+    
+    int posX = dM10 / dArea;
+    int posY = dM01 / dArea;
+
+    return Point(posX,posY);
+}
+
+
+void statusBar(Point2f center){
+
+    ostringstream statusBar;
+    string statusText = "";
+    statusText.assign("");
+    statusText.assign("FPS :");
+    statusBar << int(getFPS());
+    statusText.append(statusBar.str());
+
+    statusBar.str(""); // clear string stream
+    statusBar << int(angle);
+    statusText.append("  Angle: ");
+    statusText.append(statusBar.str());
+
+    statusBar.str(""); // clear string stream
+    statusBar << center.x;
+    statusText.append("  Center: ");
+    statusText.append(statusBar.str());
+
+    displayStatusBar("Threshold", statusText, 0);
+
+}
