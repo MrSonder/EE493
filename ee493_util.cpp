@@ -17,16 +17,18 @@ using namespace std;
 void directionData(int& posX, int& posY); // send motor signals
 void displayRASP(Mat dst);
 void setColor(int colorFront);
-void tx2Arduino();
+void tx2Arduino(string data);
 int getFPS();
 int getDistance();
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
-void trackObject(Mat dst, bool arduinoConnected);
 void calibrateThreshold(int color);
-
+void txTerminal(string data);
 Mat thresholdImage(Mat image, int colorFront, bool calibration );
 
 void dispImage(Mat image, String title, int loc);
+
+
+   
 
 time_t start;
 Mat newFrame;
@@ -34,6 +36,7 @@ string positionText = "WAITING FOR DATA";
 FILE* file; // object to open device file
 Mat newFrameThresholded;
 Mat dst;
+
 VideoCapture camera(0);
 
 int offset = 0; // 24=-1
@@ -52,13 +55,18 @@ int colorFront='B';
 bool arduinoConnected=false;
 
 
-void tx2Arduino()
+void txArduino(string data)
 {
-    file = fopen("/dev/ttyUSB4", "w");
-    fprintf(file, "%d/r", direction); // Writing to the file
+    file = fopen("/dev/ttyUSB0", "w");
+    printf("%s\n", data.c_str());
+    fprintf(file, "%s\r", data.c_str()); // Writing to the file
     fclose(file);
 }
 
+void txTerminal(string data)
+{
+    printf("%s\n", data.c_str());
+}
 
 void calibrateThreshold(int color){
     setColor(color);
@@ -214,7 +222,7 @@ Mat thresholdImage(Mat image, int colorFront, bool calibration )
         Scalar(iHighH, iHighS, iHighV), imageOUT);   
     erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
     medianBlur(imageOUT, imageOUT, 5);
-    erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 3);
+    //erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 3);
     
     //dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1),1);
     
@@ -279,13 +287,15 @@ int getDistance()
     return distance;  //modified to test slopeLine
 }
 
-
+/*
 void trackObject(Mat dst, bool arduinoConnected)
 {
+    
     if (!object_exist) {
         positionText.assign("Searching!");
         return;
     }
+    
 
     Moments oMoments = moments(dst);
     double dM01 = oMoments.m01;
@@ -298,3 +308,6 @@ void trackObject(Mat dst, bool arduinoConnected)
     if (arduinoConnected)
         tx2Arduino();
 }
+
+
+*/

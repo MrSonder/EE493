@@ -1,50 +1,40 @@
 #include "ee493_util.cpp"
 #include "ee493_future.cpp"
-
+#include <unistd.h>
 Point2f findCenter(Mat image);
-Mat drawCenterLine(Mat imageIn, int colorFront);
+Point2f drawCenterLine(Mat imageIn, int colorFront);
 Mat selectObjectAllign(Mat image, int colorFront, int object);
 double fillRatio(vector<Point> contour, int object);
 Mat selectObject(Mat image, int colorFront, int object);
 Mat largestArea(Mat image, int object);
 void rectangleMask(Mat image, RotatedRect rectangle);
 void templateExtract(Mat imageIn, int color);
+void trackObject2(Mat img, int colorFront);  
+void statusBar(Point2f center);
 
 int main(int argc, char* argv[])
 {
     
-    //calibrateThreshold('Y');
+    //calibrateThreshold('B');
     while (true) {
-        direction = 00;
+
         camera >> newFrame; // get a new frame from camera
-        resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio,INTER_LINEAR);
+        resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
 
         //templateExtract(newFrame, colorFront);
-        templateMatching(newFrame);
-        dst=drawCenterLine(newFrame,colorFront);
-        trackObject(dst,arduinoConnected); // tx2Arduino() implemented inside track object
+        //templateMatching(newFrame);
 
-        dispImage(dst, "Threshold", 2);
-        dispImage(newFrame, "Source", 0);
-
-        int c = waitKey(1);
-        if ((char)c == 27) {
-            break;
-            while (1) {
-                direction = 00;
-                //tx2Arduino();
-            }
-            break;
-        }  
+        trackObject2(newFrame, colorFront);
+        usleep( 100000 );
+        if ( waitKey(100) == 27)
+        break;  
     }
-    return 0;
 }
 
 
 void templateExtract(Mat imageIn, int color)
 {
     Mat image1,image2;
-
     image1 = selectObject(imageIn, 'Y', 'R');
     imageIn.copyTo(image2, image1);
     dispImage(image2, "Mask",4);
@@ -71,6 +61,7 @@ Mat selectObject(Mat image, int colorFront, int object)
     Mat imageSelected = largestArea(imageContours, object);
     return imageSelected;
 }
+
 
 Mat largestArea(Mat image, int object)
 {
@@ -117,8 +108,10 @@ Point2f findCenter(Mat image)
     double dM01 = oMoments.m01;
     double dM10 = oMoments.m10;
     double dArea = oMoments.m00;
+    
     int posX = dM10 / dArea;
     int posY = dM01 / dArea;
+
     return Point(posX,posY);
 }
 
@@ -146,11 +139,12 @@ double fillRatio(vector<Point> contour, int object)
     return fillRatio;
 }
 
-Mat drawCenterLine(Mat imageIn, int colorFront) 
+Point2f drawCenterLine(Mat imageIn, int colorFront) 
 {
     // draws a line throught the object and returns angle of the line
     Mat image1,image2;
     Mat image3,image4;
+
     image1 = selectObject(imageIn, 'Y', 'R');
     Point2f point_mid = findCenter(image1);
 
@@ -164,5 +158,92 @@ Mat drawCenterLine(Mat imageIn, int colorFront)
     drawStraightLine(&image4,point_mid,point_front);
 
     imageIn = imageIn + image4;
-    return image1;
+    dispImage(image2, "Threshold", 2);
+    dispImage(imageIn, "Source", 0);
+    
+    return point_front;
+}
+
+void trackObject2(Mat img, int colorFront)
+{
+//tracks object with an image taken from camera
+//uses global angle variable 
+
+    Point2f center =  drawCenterLine(img, colorFront);
+
+    int mid_y = img.rows/2;
+    int mid_x = img.cols/2;
+    Point2f test(mid_x , mid_y);
+    center = center - test;
+
+    int speed = (int) abs(center.x) + 20;
+
+
+    ostringstream speedString;
+    speedString<<speed;
+
+    string speedSTR = speedString.str();
+    string leftWheel;
+    string rightWheel;
+
+    if (speedSTR.length() == 2) {
+        leftWheel = leftWheel.append("0");
+        rightWheel = rightWheel.append("0");
+
+    } 
+
+    leftWheel.append( speedString.str() );
+    rightWheel.append( speedString.str() );
+
+
+
+
+    string txString="";
+    if(center.x > 0){
+        leftWheel.append("F");
+        rightWheel.append("R");
+    }
+
+    if(center.x <= 0){
+        leftWheel.append("R");
+        rightWheel.append("F");
+    }
+
+   
+    txString = leftWheel + rightWheel ;
+    //printf("%s\n\r", txString.c_str());
+ 
+    //txArduino(txString);
+
+
+    speedString << int(getFPS());
+    txString.append(speedString.str());
+
+    txTerminal(txString);
+    //statusBar(center);
+
+}
+
+
+void statusBar(Point2f center){
+
+    ostringstream statusBar;
+    string statusText = "";
+    statusText.assign("");
+    statusText.assign("FPS :");
+    statusBar << int(getFPS());
+    statusText.append(statusBar.str());
+
+    statusBar.str(""); // clear string stream
+    statusBar << int(angle);
+    statusText.append("  Angle: ");
+    statusText.append(statusBar.str());
+
+    statusBar.str(""); // clear string stream
+    statusBar << center.x;
+    statusText.append("  Center: ");
+    statusText.append(statusBar.str());
+
+    displayStatusBar("Threshold", statusText, 0);
+
 }
