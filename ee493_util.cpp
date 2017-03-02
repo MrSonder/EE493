@@ -57,6 +57,7 @@ void txArduino(string data)
     FILE* file;
     file = fopen("/dev/ttyUSB0", "w");
     fprintf(file, "%s\r", data.c_str()); // Writing to the file
+    txTerminal(data);
     fclose(file);
 }
 
@@ -185,7 +186,7 @@ void setColor(int colorFront)
     case int('Y'):
         iLowH = 15;
         iHighH = 70;
-        iLowS = 50;
+        iLowS = 15;
         iHighS = 255;
         iLowV = 35;
         iHighV = 255;
