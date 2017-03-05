@@ -9,6 +9,7 @@
 #include <time.h>
 #include <cmath>
 #include <unistd.h>
+#include <iostream>
 
 #define PI 3.14159
 using namespace cv;
@@ -20,7 +21,7 @@ int colorFront='B';
 Point2f drawCenterLine(Mat imageIn, int colorFront);
 Mat getObjectOfColor(Mat image, int colorFront, int object);
 Mat getLargestArea(Mat image, int object);
-void goTowardsObject(Mat img, int colorFront, bool ArduinoConnected);
+void goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnected);
 void statusBar(Point2f center);
 
 Point2f findCenter(Mat image);
@@ -30,10 +31,8 @@ int getFPS();
 int getDistance();
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
 void calibrateThreshold(int color);
-void txTerminal(string data);
 void dispImage(Mat image, String title, int loc);
 void setColor(int colorFront);
-void tx2Arduino(string data);
 
 time_t start;
 Mat newFrame;
@@ -51,20 +50,6 @@ float circleRadius;
 int lockToleranceInt = 75;
 float angle;
 float slopeLine;
-
-void txArduino(string data)
-{
-    FILE* file;
-    file = fopen("/dev/ttyUSB0", "w");
-    fprintf(file, "%s\r", data.c_str()); // Writing to the file
-    txTerminal(data);
-    fclose(file);
-}
-
-void txTerminal(string data)
-{
-    printf("%s\n", data.c_str());
-}
 
 
 Mat thresholdImage(Mat image, int colorFront, bool calibration )
