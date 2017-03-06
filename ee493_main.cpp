@@ -2,23 +2,25 @@
 #include "ee493_future.cpp"
 #include "ee493_arduino.cpp"
 
+bool robotStop = false;
 int main(int argc, char* argv[])
 {
     cout<<"ArduinoConnected:"<< ArduinoConnected <<endl;
     
-    //calibrateThreshold('Y');
+    //calibrateThreshold('B');
     //turnTimer(1);
     //double time_1 = calibrateTurnTime(150, -150, 2);
-    
-
+    //calibrateTurnTime(100,-100,5);
+    //turnRobot(225);
     while (true) {     
         camera >> newFrame; // get a new frame from camera
         resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
         goTowardsObject(150, newFrame, colorFront, ArduinoConnected);
-
+        //templateExtract(newFrame, 'B');
+        //templateMatching(newFrame);
         //txArduino("050F050R");
         //usleep( 100000 );
-        if ( waitKey(10) == 27)
+        if ( waitKey(1) == 27)
         break;  
     }
 }
@@ -106,20 +108,23 @@ void goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnec
     Point2f test(mid_x , mid_y);
     center = center - test;
     string txString;
-    int speed = (center.x)/2 + 20;
-    
-    if(abs(center.x) < 550){
+    int speed = (center.x)/4;
+    if(center.y > 80 ){
+        speed = (center.x)/2;
+         txArduino(driveMotor(base_speed/2 + speed, base_speed/2 - speed));
+    }
+    else if(abs(center.x) < 550){
         txArduino(driveMotor(base_speed + speed, base_speed - speed));
     }
-
-     /*  
-    else if ( abs(center.x) > 55 || abs(center.x) < 1000){
-            speed = speed / 2;
-            txString="X" + int_to_XXX(speed)+int_to_XXX(-speed);
-    }*/
-    else
-       txArduino(driveMotor(0, 0));
-   
-    //statusBar(center);
+    else{
+         txArduino(driveMotor(0,0));
+    }
     
+    //cout<<center.y<<endl;
+    if(center.y > 110 || robotStop){
+        driveMotorForSeconds(1.5, 100, 100);
+        robotStop=true;
+        exit(0);
+    }
 }
+

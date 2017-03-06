@@ -37,7 +37,7 @@ void setColor(int colorFront);
 time_t start;
 Mat newFrame;
 string positionText = "";
-VideoCapture camera(0);
+VideoCapture camera(1);
 
 int offset = 0; // 24=-1
 int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;

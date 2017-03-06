@@ -8,10 +8,10 @@ double calibrateTurnTime(int L, int R, int number_of_turns);
 void tx2Arduino(string data);
 void txTerminal(string data);
 
-int turn_PWM = 150;
-double second_per_turn = 14;
+int turn_PWM = 100;
+double second_per_turn = 4.4;
 double camera_center_to_object_duration = 5.5;
-bool ArduinoConnected = false;
+bool ArduinoConnected=true;
 
 void txArduino(string data)
 {
@@ -56,7 +56,7 @@ void allignRobotAxial(int angle){
 
 double calibrateTurnTime(int L, int R, int number_of_turns){
     double second_per_turn = calibrateTime(L, R) /((double) number_of_turns);
-    cout << second_per_turn;
+    cout << "second_per_turn: " << second_per_turn;
     return second_per_turn;
 }
 void driveMotorForSeconds(int seconds, int L, int R){
@@ -71,6 +71,7 @@ void turnRobot(int turn_angle){
     double turn_time = second_per_degree * turn_angle;
     cout<<"\nTurning " << turn_angle << " degrees in " << turn_time << "seconds" <<endl;
     
+    turn_time = turn_time + 0.5;
     if (turn_angle>0){
         driveMotorForSeconds(turn_time, -1*turn_PWM, turn_PWM );
     }

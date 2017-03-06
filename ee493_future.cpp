@@ -5,7 +5,7 @@ void templateExtract(Mat imageIn, int color);
 void templateExtract(Mat imageIn, int color)
 {
     Mat image1,image2;
-    image1 = getObjectOfColor(imageIn, 'Y', 'R');
+    image1 = getObjectOfColor(imageIn, color, 'R');
     imageIn.copyTo(image2, image1);
     dispImage(image2, "Mask",4);
 }
@@ -30,7 +30,7 @@ void templateMatching(Mat img) //not working
 {
     Mat result;
 
-    Mat templ = imread("rsz_blue_crop.png", CV_LOAD_IMAGE_COLOR);   // Read the file
+    Mat templ = imread("blue3.png", CV_LOAD_IMAGE_COLOR);   // Read the file
 
   /// Create the result matrix
   int result_cols =  img.cols - templ.cols + 1;
@@ -40,10 +40,10 @@ void templateMatching(Mat img) //not working
 
   /// Do the Matching and Normalize
   matchTemplate( img, templ, result, CV_TM_CCORR_NORMED );
-  normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
+  //normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
   threshold(result, result, 0.8, 1, THRESH_TOZERO);
   dispImage(result, "matching", 3);
-  
+  dispImage(img, "source", 0);
   //testWindow(result,"matching");
   /// Localizing the best match with minMaxLoc
   double minVal; double maxVal; Point minLoc; Point maxLoc;
