@@ -2,12 +2,19 @@
 #include "ee493_future.cpp"
 #include "ee493_arduino.cpp"
 #include <cmath>
+
+#include <iostream>
+#include <fstream>
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/stitching.hpp"
+//#include "opencv2/stitching/stitcher.hpp"
 bool searchColor(Mat img, int color);
 void goTowardsObjectMethod(int color);
 void searchColorMethod(int color);
 
 Mat getTriangleContours(Mat image, int trig_index);
-Mat getBoardSlot(Mat img, int trig_index);
+Point2f getBoardSlot(Mat img, int trig_index);
 int cam_index_1 = 1;
 int cam_index_2 = 1 - cam_index_1;
 
@@ -20,10 +27,53 @@ int main(int argc, char *argv[])
     int colorFront = 'B';
     int colorFlag = 'P';
     //calibrateThreshold('R');
-    //calibrateThreshold('b');
 
-    Mat image1, image2;
-    Mat image3, image4;
+/*
+camera.open(0); while(!camera.read(newFrame) ) {continue;}
+while(true){
+camera.read(newFrame);
+dispImage(newFrame, "pano", 4);
+}
+*/
+Mat pano;
+
+
+Stitcher stitcher = Stitcher::createDefault(false);
+
+camera.open(0); while(!camera.read(newFrame) ) {continue;}
+int b=0;
+
+while(true){
+    Mat pano;
+    vector<Mat> imgs;
+    int k=0;
+    while(b != 'd'){
+        b = waitKey(100);
+        camera.read(newFrame);
+        resize(newFrame, newFrame, Size(), 0.6, 0.6, INTER_LINEAR);
+        
+        if(b =='r'){
+            b=0;
+            cout<<"save"<<endl;
+            imgs.push_back(newFrame);
+
+            Stitcher::Status status = stitcher.stitch(imgs, pano);
+       
+            if (status == Stitcher::OK){
+            k++;
+            dispImage(pano, "pano", 0);
+            if(k==5){
+                break;
+            }
+            }
+            }
+        dispImage(newFrame, "frame", 5);
+    }
+    b=0;
+            cout<<"pano"<<endl;
+
+}
+/*
 
     while (true)
     {
@@ -31,7 +81,8 @@ int main(int argc, char *argv[])
         getBoardSlot(newFrame, 0);
 
         //templateExtract(newFrame, 'B');
-    }
+    }*/
+
     //templateMatching(newFrame);
 
     /*

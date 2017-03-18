@@ -163,7 +163,7 @@ void dispImage(Mat image, String title, int loc)
     // 1 3 5
     waitKey(1);
     namedWindow(title, 1);
-    //resize(image, image, Size(), 0.55 / resizeRatio, 0.55 / resizeRatio, INTER_AREA);
+    resize(image, image, Size(), 0.55 / resizeRatio, 0.55 / resizeRatio, INTER_AREA);
     imshow(title, image);
     int x = 50 + (loc / 2) * 380;
     int y = 30 + (loc % 2) * 370;
