@@ -39,7 +39,6 @@ string positionText = "";
 //VideoCapture camera(1);
 
 VideoCapture camera;
-VideoCapture camera2;
 
 int offset = 0; // 24=-1
 int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;
@@ -59,11 +58,20 @@ Mat thresholdImage(Mat image, int colorFront, bool calibration)
 
     if (!calibration)
         setColor(colorFront);
-
+    
     Mat imageOUT = image.clone();
     cvtColor(imageOUT, imageOUT, COLOR_BGR2HSV);
+    Mat temp = imageOUT.clone();
+    
     inRange(imageOUT, Scalar(iLowH, iLowS, iLowV),
             Scalar(iHighH, iHighS, iHighV), imageOUT);
+
+    if(colorFront == 66){
+        cout<<"++"<<endl;
+    inRange(temp, Scalar(0, iLowS, iLowV),
+            Scalar(70, iHighS, iHighV), temp);
+    imageOUT = temp + imageOUT;
+    }
     erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
     medianBlur(imageOUT, imageOUT, 5);
     //erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 3);
@@ -87,8 +95,11 @@ void calibrateThreshold(int color)
     Mat image;
     while (true)
     {
-        camera >> newFrame; // get a new frame from camera
-        resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
+        //camera >> newFrame; // get a new frame from camera
+        newFrame = imread("board3.png");
+        
+        resize(newFrame, newFrame, Size(), 0.5, 0.5, INTER_LINEAR);
+        
         image = thresholdImage(newFrame, 'B', true);
         dispImage(image, "Calibration", 2);
         int c = waitKey(10);
@@ -140,7 +151,7 @@ void dispImage(Mat image, String title, int loc)
     // 0 2 4
     // 1 3 5
     namedWindow(title, 1);
-    resize(image, image, Size(), 0.55 / resizeRatio, 0.55 / resizeRatio, INTER_AREA);
+    //resize(image, image, Size(), 0.55 / resizeRatio, 0.55 / resizeRatio, INTER_AREA);
     imshow(title, image);
     int x = 50 + (loc / 2) * 380;
     int y = 30 + (loc % 2) * 370;
@@ -152,20 +163,20 @@ void setColor(int colorFront)
     switch (colorFront)
     {
     case int('B'):
-        iLowH = 70;
-        iHighH = 110;
-        iLowS = 50;
+        iLowH = 60;
+        iHighH = 105;
+        iLowS = 45;
         iHighS = 255;
-        iLowV = 50;
+        iLowV = 45;
         iHighV = 255;
         break;
 
     case int('R'):
-        iLowH = 110;
+        iLowH = 155;
         iHighH = 179;
-        iLowS = 15;
+        iLowS = 55;
         iHighS = 255;
-        iLowV = 35;
+        iLowV = 25;
         iHighV = 255;
         break;
 
@@ -188,11 +199,11 @@ void setColor(int colorFront)
         break;
 
     case int('P'):
-        iLowH = 50;
-        iHighH = 85;
-        iLowS = 0;
+        iLowH = 120;
+        iHighH = 160;
+        iLowS = 15;
         iHighS = 255;
-        iLowV = 0;
+        iLowV = 35;
         iHighV = 255;
         break;
     }

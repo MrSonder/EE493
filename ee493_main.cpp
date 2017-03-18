@@ -13,19 +13,24 @@ int main(int argc, char *argv[])
 {
     time(&start);
     cout << "ArduinoConnected:" << ArduinoConnected << endl;
-    int colorFront='B';
-    calibrateThreshold('B');
+    int colorFront = 'B';
+    int colorFlag = 'P';
+    calibrateThreshold('R');
+
 
 /*
     searchColorMethod(colorFront);
     goTowardsObjectMethod(colorFront);
 
     //go to flag
-    searchColorMethod('P');
-    goTowardsObjectMethod('P');
+    searchColorMethod(colorFlag);
+    goTowardsObjectMethod(colorFlag);
 */
 
+
+
         //templateExtract(newFrame, 'B');
+        //newFrame = imread("board.jpg");
         //templateMatching(newFrame);
         
         /*int b = waitKey(1);	
