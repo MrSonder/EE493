@@ -3,18 +3,6 @@ void rectangleMask(Mat image, RotatedRect rectangle);
 void templateExtract(Mat imageIn, int color);
 
 
-
-/*
-int method = THRESH_BINARY_INV;
-int erode_val = 2;
-int dilate_val = 3;
-int filter = 2;
-int threshold_bw = thresh_white;
-*/
-
-
-
-
 void templateExtract(Mat imageIn, int color)
 {
     Mat image1,image2;
@@ -110,8 +98,6 @@ Mat thresholdImageBlackWhite(Mat image, int color, bool calibration)
     erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), erode_val);    
     medianBlur(imageOUT, imageOUT, 5);
     dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 3);
-    dispImage(imageOUT, "low", 0);
-
     return imageOUT ;
 }
 

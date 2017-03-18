@@ -63,7 +63,7 @@ Mat thresholdImage(Mat image, int colorFront, bool calibration)
  
     Mat imageOUT = image.clone();
 
-    if(colorFront == 'r' || colorFront == 'b'){
+    if(colorFront == 'w' || colorFront == 'b'){
         imageOUT = thresholdImageBlackWhite(image, colorFront, calibration);
         return imageOUT;
     }

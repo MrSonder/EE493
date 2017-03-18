@@ -6,8 +6,12 @@ bool searchColor(Mat img, int color);
 void goTowardsObjectMethod(int color);
 void searchColorMethod(int color);
 
+Mat getTriangleContours(Mat image, int trig_index);
+Mat getBoardSlot(Mat img, int trig_index);
 int cam_index_1 = 1;
 int cam_index_2 = 1 - cam_index_1;
+
+void goTowardsSlot(int base_speed, Mat img, int trig_index, bool ArduinoConnected, int y_threshold, int turn_rate_divider);
 
 int main(int argc, char *argv[])
 {
@@ -18,22 +22,19 @@ int main(int argc, char *argv[])
     //calibrateThreshold('R');
     //calibrateThreshold('b');
 
-
     Mat image1, image2;
     Mat image3, image4;
 
-
-    
-    while(true){
+    while (true)
+    {
         newFrame = imread("board2.png");
-        newFrame = getObjectOfColor(newFrame, 'b', 'R');
-        dispImage(newFrame, "im", 0);
+        getBoardSlot(newFrame, 0);
+
         //templateExtract(newFrame, 'B');
-}
-        //templateMatching(newFrame);
+    }
+    //templateMatching(newFrame);
 
-
-/*
+    /*
     searchColorMethod(colorFront);
     goTowardsObjectMethod(colorFront);
 
@@ -42,16 +43,7 @@ int main(int argc, char *argv[])
     goTowardsObjectMethod(colorFlag);
 */
 
-
-
-        
-       
-       
-       
-       
-       
-       
-        /*int b = waitKey(1);	
+    /*int b = waitKey(1);	
         if ( b == 'q')
         {camera.release(); camera.open(0); while(!camera.read(newFrame) ) {continue;}}
     	if ( b == 'w')
@@ -62,7 +54,63 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void searchColorMethod(int color){
+Point2f getBoardSlot(Mat img, int trig_index)
+{
+
+    Mat imageContours = thresholdImage(img, 'w', false);
+    flip(imageContours, imageContours, 1);
+    transpose(imageContours, imageContours);
+    imageContours = getTriangleContours(imageContours, trig_index);
+    flip(imageContours, imageContours, 0);
+    transpose(imageContours, imageContours);
+    Point2f point_mid = findCenter(imageContours);
+    dispImage(imageContours, "3", 4);
+    return point_mid;
+}
+
+Mat getTriangleContours(Mat image, int trig_index)
+{
+    Mat imageSelected = Mat::zeros(image.size(), CV_8UC1);
+    vector<vector<Point> > contours; // Vector for storing contour
+    vector<Vec4i> hierarchy;
+
+    findContours(image, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+    drawContours(imageSelected, contours, trig_index, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
+    drawContours(imageSelected, contours, trig_index + 1, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
+
+    return imageSelected;
+}
+
+
+void goTowardsSlot(int base_speed, Mat img, int trig_index, bool ArduinoConnected, int y_threshold, int turn_rate_divider)
+{
+    Point2f center = getBoardSlot(img, trig_index);
+
+    int mid_y = img.rows / 2;
+    int mid_x = img.cols / 2;
+    Point2f test(mid_x, mid_y);
+    center = center - test;
+    string txString;
+    int speed = (center.x) / turn_rate_divider;
+    if (abs(center.x) < 550)
+    {
+        txArduino(driveMotor(base_speed + speed, base_speed - speed));
+    }
+    else
+    {
+        txArduino(driveMotor(0, 0));
+    }
+
+    if (center.y > y_threshold)
+    {
+        //driveMotorForSeconds(1.5, 100, 100);
+        txArduino(driveMotor(0, 0));
+    }
+}
+
+
+void searchColorMethod(int color)
+{
     //camera.release();
     camera.open(cam_index_2);
     while (!camera.read(newFrame))
@@ -85,7 +133,7 @@ void searchColorMethod(int color){
 
 void goTowardsObjectMethod(int color)
 {
-    
+
     camera.open(cam_index_1);
     while (!camera.read(newFrame))
     {
