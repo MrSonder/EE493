@@ -60,25 +60,26 @@ Mat thresholdImage(Mat image, int colorFront, bool calibration)
 {
     if (!calibration)
         setColor(colorFront);
- 
+
     Mat imageOUT = image.clone();
 
-    if(colorFront == 'w' || colorFront == 'b'){
+    if (colorFront == 'w' || colorFront == 'b')
+    {
         imageOUT = thresholdImageBlackWhite(image, colorFront, calibration);
         return imageOUT;
     }
 
-
     cvtColor(imageOUT, imageOUT, COLOR_BGR2HSV);
     Mat temp = imageOUT.clone();
-    
+
     inRange(imageOUT, Scalar(iLowH, iLowS, iLowV),
             Scalar(iHighH, iHighS, iHighV), imageOUT);
-    if(colorFront == 82){
-        
-    inRange(temp, Scalar(0, iLowS, iLowV),
-            Scalar(28, iHighS, iHighV), temp);
-    imageOUT = temp + imageOUT;
+    if (colorFront == 82)
+    {
+
+        inRange(temp, Scalar(0, iLowS, iLowV),
+                Scalar(28, iHighS, iHighV), temp);
+        imageOUT = temp + imageOUT;
     }
     erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
     medianBlur(imageOUT, imageOUT, 5);
@@ -89,7 +90,8 @@ Mat thresholdImage(Mat image, int colorFront, bool calibration)
 
 void calibrateThreshold(int color)
 {
-    if(color == 'b' || color == 'w'){
+    if (color == 'b' || color == 'w')
+    {
         calibrateThresholdBlackWhite(color);
     }
     setColor(color);
@@ -108,9 +110,9 @@ void calibrateThreshold(int color)
     {
         //camera >> newFrame; // get a new frame from camera
         newFrame = imread("board3.png");
-        
+
         resize(newFrame, newFrame, Size(), 0.5, 0.5, INTER_LINEAR);
-        
+
         image = thresholdImage(newFrame, color, true);
         dispImage(image, "Calibration", 2);
         int c = waitKey(10);

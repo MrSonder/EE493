@@ -12,7 +12,10 @@
 bool searchColor(Mat img, int color);
 void goTowardsObjectMethod(int color);
 void searchColorMethod(int color);
+void switchToCamera(int index);
+void startCamera(int index);
 
+void calibrateDoubleCamera();
 Mat getTriangleContours(Mat image, int trig_index);
 Point2f getBoardSlot(Mat img, int trig_index);
 int cam_index_1 = 1;
@@ -27,62 +30,15 @@ int main(int argc, char *argv[])
     int colorFront = 'B';
     int colorFlag = 'P';
     //calibrateThreshold('R');
+    //calibrateDoubleCamera();
 
-/*
-camera.open(0); while(!camera.read(newFrame) ) {continue;}
-while(true){
-camera.read(newFrame);
-dispImage(newFrame, "pano", 4);
-}
-*/
-Mat pano;
-
-
-Stitcher stitcher = Stitcher::createDefault(false);
-
-camera.open(0); while(!camera.read(newFrame) ) {continue;}
-int b=0;
-
-while(true){
-    Mat pano;
-    vector<Mat> imgs;
-    int k=0;
-    while(b != 'd'){
-        b = waitKey(100);
-        camera.read(newFrame);
-        resize(newFrame, newFrame, Size(), 0.6, 0.6, INTER_LINEAR);
-        
-        if(b =='r'){
-            b=0;
-            cout<<"save"<<endl;
-            imgs.push_back(newFrame);
-
-            Stitcher::Status status = stitcher.stitch(imgs, pano);
-       
-            if (status == Stitcher::OK){
-            k++;
-            dispImage(pano, "pano", 0);
-            if(k==5){
-                break;
-            }
-            }
-            }
-        dispImage(newFrame, "frame", 5);
-    }
-    b=0;
-            cout<<"pano"<<endl;
-
-}
-/*
-
+    /*
     while (true)
     {
         newFrame = imread("board2.png");
         getBoardSlot(newFrame, 0);
-
         //templateExtract(newFrame, 'B');
     }*/
-
     //templateMatching(newFrame);
 
     /*
@@ -94,17 +50,73 @@ while(true){
     goTowardsObjectMethod(colorFlag);
 */
 
-    /*int b = waitKey(1);	
-        if ( b == 'q')
-        {camera.release(); camera.open(0); while(!camera.read(newFrame) ) {continue;}}
-    	if ( b == 'w')
-        {camera.release(); camera.open(1); while(!camera.read(newFrame) ) {continue;}}
-    	//cout << "asodjk" <<endl;
-    	if ( b == 27) break;*/
-
     return 0;
 }
+void getPanaroma()
+{
+    startCamera(0);
 
+    Mat pano;
+    Stitcher stitcher = Stitcher::createDefault(false);
+    int b = 0;
+
+    while (true)
+    {
+        Mat pano;
+        vector<Mat> imgs;
+        int k = 0;
+        while (b != 'd')
+        {
+            b = waitKey(100);
+            camera.read(newFrame);
+            resize(newFrame, newFrame, Size(), 0.6, 0.6, INTER_LINEAR);
+
+            if (b == 'r')
+            {
+                b = 0;
+                cout << "save" << endl;
+                imgs.push_back(newFrame);
+
+                Stitcher::Status status = stitcher.stitch(imgs, pano);
+
+                if (status == Stitcher::OK)
+                {
+                    k++;
+                    dispImage(pano, "pano", 0);
+                    if (k == 5)
+                    {
+                        break;
+                    }
+                }
+            }
+            dispImage(newFrame, "frame", 5);
+        }
+        b = 0;
+        cout << "pano" << endl;
+    }
+}
+
+void calibrateDoubleCamera()
+{
+    startCamera(0);
+    while (true)
+    {
+        camera.read(newFrame);
+        dispImage(newFrame, "Source", 4);
+        int b = waitKey(1);
+        b = b - 48;
+        if (b == 1)
+        {
+            cout << b << endl;
+            switchToCamera(0);
+        }
+        if (b == 2)
+        {
+            cout << b << endl;
+            switchToCamera(0);
+        }
+    }
+}
 Point2f getBoardSlot(Mat img, int trig_index)
 {
 
@@ -132,7 +144,6 @@ Mat getTriangleContours(Mat image, int trig_index)
     return imageSelected;
 }
 
-
 void goTowardsSlot(int base_speed, Mat img, int trig_index, bool ArduinoConnected, int y_threshold, int turn_rate_divider)
 {
     Point2f center = getBoardSlot(img, trig_index);
@@ -158,17 +169,23 @@ void goTowardsSlot(int base_speed, Mat img, int trig_index, bool ArduinoConnecte
         txArduino(driveMotor(0, 0));
     }
 }
-
-
-void searchColorMethod(int color)
+void switchToCamera(int index)
 {
-    //camera.release();
-    camera.open(cam_index_2);
+    camera.release();
+    startCamera(index);
+}
+void startCamera(int index)
+{
+    camera.open(index);
     while (!camera.read(newFrame))
     {
         continue;
     }
-
+}
+void searchColorMethod(int color)
+{
+    //camera.release();
+    startCamera(cam_index_2);
     object_exist = searchColor(newFrame, color);
 
     while (!object_exist)
@@ -184,12 +201,7 @@ void searchColorMethod(int color)
 
 void goTowardsObjectMethod(int color)
 {
-
-    camera.open(cam_index_1);
-    while (!camera.read(newFrame))
-    {
-        continue;
-    }
+    startCamera(cam_index_1);
     object_exist = true;
     while (object_exist)
     {
@@ -200,12 +212,7 @@ void goTowardsObjectMethod(int color)
 
     camera.release();
 
-    camera.open(cam_index_2);
-    while (!camera.read(newFrame))
-    {
-        continue;
-    }
-
+    startCamera(cam_index_2);
     object_exist = true;
     while (object_exist)
     {
@@ -237,14 +244,10 @@ bool goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnec
         txArduino(driveMotor(0, 0));
     }
 
-    cout << "\n"
-         << center.y << "\n"
-         << endl;
     if (center.y > y_threshold)
     {
         //driveMotorForSeconds(1.5, 100, 100);
         txArduino(driveMotor(0, 0));
-
         object_exist = false;
     }
     return object_exist;
