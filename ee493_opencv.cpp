@@ -16,12 +16,11 @@ using namespace cv;
 using namespace std;
 
 float resizeRatio = 0.5;
-int colorFront='B';
 
 Point2f drawCenterLine(Mat imageIn, int colorFront);
 Mat getObjectOfColor(Mat image, int colorFront, int object);
 Mat getLargestArea(Mat image, int object);
-void goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnected);
+bool goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnected, int y_threshold, int turn_rate_divider);
 void statusBar(Point2f center);
 
 Point2f findCenter(Mat image);
@@ -37,8 +36,9 @@ void setColor(int colorFront);
 time_t start;
 Mat newFrame;
 string positionText = "";
-VideoCapture camera(1);
-
+//VideoCapture camera(1);
+VideoCapture camera;
+VideoCapture camera2;
 int offset = 0; // 24=-1
 int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;
 int filterRatio = 1;

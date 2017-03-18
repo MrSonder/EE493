@@ -1,32 +1,150 @@
 #include "ee493_opencv.cpp"
 #include "ee493_future.cpp"
 #include "ee493_arduino.cpp"
+#include <cmath>
+bool searchColor(Mat img, int color);
+void goTowardsObjectMethod(int color);
+void searchColorMethod(int color);
 
-bool robotStop = false;
-int main(int argc, char* argv[])
+int cam_index_1 = 1;
+int cam_index_2 = 1 - cam_index_1;
+
+int main(int argc, char *argv[])
 {
-    cout<<"ArduinoConnected:"<< ArduinoConnected <<endl;
-    
+    cout << "ArduinoConnected:" << ArduinoConnected << endl;
+    int colorFront='B';
     //calibrateThreshold('B');
-    //turnTimer(1);
-    //double time_1 = calibrateTurnTime(150, -150, 2);
-    //calibrateTurnTime(100,-100,5);
-    //turnRobot(225);
-    while (true) {     
-        camera >> newFrame; // get a new frame from camera
-        resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
-        goTowardsObject(150, newFrame, colorFront, ArduinoConnected);
+
+    searchColorMethod(colorFront);
+    goTowardsObjectMethod(colorFront);
+
+    //go to flag
+    searchColorMethod('B');
+    goTowardsObjectMethod('B');
+
         //templateExtract(newFrame, 'B');
         //templateMatching(newFrame);
-        //txArduino("050F050R");
-        //usleep( 100000 );
-        if ( waitKey(1) == 27)
-        break;  
+        
+        /*int b = waitKey(1);	
+        if ( b == 'q')
+        {camera.release(); camera.open(0); while(!camera.read(newFrame) ) {continue;}}
+    	if ( b == 'w')
+        {camera.release(); camera.open(1); while(!camera.read(newFrame) ) {continue;}}
+    	//cout << "asodjk" <<endl;
+    	if ( b == 27) break;*/
+
+    return 0;
+}
+
+void searchColorMethod(int color){
+    //camera.release();
+    camera.open(cam_index_2);
+    while (!camera.read(newFrame))
+    {
+        continue;
+    }
+
+    object_exist = searchColor(newFrame, color);
+
+    while (!object_exist)
+    {
+        camera >> newFrame;
+        txArduino(driveMotor(70, -70));
+        resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
+        object_exist = searchColor(newFrame, color);
+    }
+    txArduino(driveMotor(-70, 70));
+    txArduino(driveMotor(0, 0));
+}
+
+void goTowardsObjectMethod(int color)
+{
+    
+    camera.open(cam_index_1);
+    while (!camera.read(newFrame))
+    {
+        continue;
+    }
+    object_exist = true;
+    while (object_exist)
+    {
+        camera >> newFrame;
+        resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
+        object_exist = goTowardsObject(150, newFrame, color, ArduinoConnected, 110, 5);
+    }
+
+    camera.release();
+
+    camera.open(cam_index_2);
+    while (!camera.read(newFrame))
+    {
+        continue;
+    }
+
+    object_exist = true;
+    while (object_exist)
+    {
+        camera >> newFrame;
+        resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
+        object_exist = goTowardsObject(150, newFrame, color, ArduinoConnected, 105, 4);
     }
 }
 
+bool goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnected, int y_threshold, int turn_rate_divider)
+{
+    //tracks object with an image taken from camera
+    //uses global angle variable
 
-Mat getObjectOfColor(Mat image, int colorFront, int object) 
+    Point2f center = drawCenterLine(img, colorFront);
+    bool object_exist = true;
+    int mid_y = img.rows / 2;
+    int mid_x = img.cols / 2;
+    Point2f test(mid_x, mid_y);
+    center = center - test;
+    string txString;
+    int speed = (center.x) / turn_rate_divider;
+    if (abs(center.x) < 550)
+    {
+        txArduino(driveMotor(base_speed + speed, base_speed - speed));
+    }
+    else
+    {
+        txArduino(driveMotor(0, 0));
+    }
+
+    cout << "\n"
+         << center.y << "\n"
+         << endl;
+    if (center.y > y_threshold)
+    {
+        //driveMotorForSeconds(1.5, 100, 100);
+        txArduino(driveMotor(0, 0));
+
+        object_exist = false;
+    }
+    return object_exist;
+}
+
+bool searchColor(Mat img, int color)
+{
+    //tracks object with an image taken from camera
+    //uses global angle variable
+
+    Point2f center = drawCenterLine(img, color);
+    bool object_exist = false;
+    int mid_y = img.rows / 2;
+    int mid_x = img.cols / 2;
+    Point2f test(mid_x, mid_y);
+    center = center - test;
+
+    if ((center.x > -100 and center.x < 100) and (center.y < 80 and center.y > -20))
+    {
+        object_exist = true;
+    }
+    return object_exist;
+}
+
+Mat getObjectOfColor(Mat image, int colorFront, int object)
 {
     Mat imageContours = thresholdImage(image, colorFront, false);
     Mat imageSelected = getLargestArea(imageContours, object);
@@ -45,36 +163,34 @@ Mat getLargestArea(Mat image, int object)
     int largest_contour_index = 0;
     int largest_fillRatio = 0;
 
-    findContours(image, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE );
+    findContours(image, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 
     for (int i = 0; i < contours.size(); i++) // iterate through each contour.
     {
         double a = contourArea(contours[i], false);
         //if (contourArea(contours[i], false)>2000){
-        if (a > largest_area) {
+        if (a > largest_area)
+        {
             largest_area = a;
             largest_contour_index = i; // Store the index of largest contour
             minEnclosingCircle(contours[i], circleCenter, circleRadius);
             boundRect = minAreaRect(contours[i]);
         }
-
     }
 
-    if (object=='R')
+    if (object == 'R')
         rectangleMask(image, boundRect);
-    
+
     drawContours(imageSelected, contours, largest_contour_index, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
 
-    object_exist = true;
     return imageSelected;
 }
 
-
-Point2f drawCenterLine(Mat imageIn, int colorFront) 
+Point2f drawCenterLine(Mat imageIn, int colorFront)
 {
     // draws a line through the object and returns angle of the line
-    Mat image1,image2;
-    Mat image3,image4;
+    Mat image1, image2;
+    Mat image3, image4;
 
     image1 = getObjectOfColor(imageIn, 'Y', 'R');
     Point2f point_mid = findCenter(image1);
@@ -85,46 +201,14 @@ Point2f drawCenterLine(Mat imageIn, int colorFront)
     Point2f point_front = findCenter(image2);
 
     image4 = Mat::zeros(imageIn.size(), CV_8UC3);
-    drawStraightLine(&image4,point_mid,point_front);
+    drawStraightLine(&image4, point_mid, point_front);
 
     imageIn = imageIn + image4;
-    if (!ArduinoConnected){
+    if (!ArduinoConnected)
+    {
         dispImage(image2, "Threshold", 2);
         dispImage(imageIn, "Source", 0);
     }
-    
+
     return point_front;
 }
-
-void goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnected)
-{
-//tracks object with an image taken from camera
-//uses global angle variable 
-
-    Point2f center =  drawCenterLine(img, colorFront);
-
-    int mid_y = img.rows/2;
-    int mid_x = img.cols/2;
-    Point2f test(mid_x , mid_y);
-    center = center - test;
-    string txString;
-    int speed = (center.x)/4;
-    if(center.y > 80 ){
-        speed = (center.x)/2;
-         txArduino(driveMotor(base_speed/2 + speed, base_speed/2 - speed));
-    }
-    else if(abs(center.x) < 550){
-        txArduino(driveMotor(base_speed + speed, base_speed - speed));
-    }
-    else{
-         txArduino(driveMotor(0,0));
-    }
-    
-    //cout<<center.y<<endl;
-    if(center.y > 110 || robotStop){
-        driveMotorForSeconds(1.5, 100, 100);
-        robotStop=true;
-        exit(0);
-    }
-}
-
