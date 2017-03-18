@@ -32,6 +32,8 @@ void drawStraightLine(Mat *img, Point2f p1, Point2f p2);
 void calibrateThreshold(int color);
 void dispImage(Mat image, String title, int loc);
 void setColor(int colorFront);
+Mat thresholdImageBlackWhite(Mat image, int color, bool calibration);
+void calibrateThresholdBlackWhite(int color);
 
 time_t start, end;
 Mat newFrame;
@@ -52,24 +54,30 @@ int lockToleranceInt = 75;
 float angle;
 float slopeLine;
 double FPSCounter = 1;
+int method, erode_val, dilate_val, filter, threshold_bw;
 
 Mat thresholdImage(Mat image, int colorFront, bool calibration)
 {
-
     if (!calibration)
         setColor(colorFront);
-    
+ 
     Mat imageOUT = image.clone();
+
+    if(colorFront == 'r' || colorFront == 'b'){
+        imageOUT = thresholdImageBlackWhite(image, colorFront, calibration);
+        return imageOUT;
+    }
+
+
     cvtColor(imageOUT, imageOUT, COLOR_BGR2HSV);
     Mat temp = imageOUT.clone();
     
     inRange(imageOUT, Scalar(iLowH, iLowS, iLowV),
             Scalar(iHighH, iHighS, iHighV), imageOUT);
-
-    if(colorFront == 66){
-        cout<<"++"<<endl;
+    if(colorFront == 82){
+        
     inRange(temp, Scalar(0, iLowS, iLowV),
-            Scalar(70, iHighS, iHighV), temp);
+            Scalar(28, iHighS, iHighV), temp);
     imageOUT = temp + imageOUT;
     }
     erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
@@ -81,6 +89,9 @@ Mat thresholdImage(Mat image, int colorFront, bool calibration)
 
 void calibrateThreshold(int color)
 {
+    if(color == 'b' || color == 'w'){
+        calibrateThresholdBlackWhite(color);
+    }
     setColor(color);
     char windowTitle[] = "Calibration";
     namedWindow(windowTitle, 1);
@@ -100,7 +111,7 @@ void calibrateThreshold(int color)
         
         resize(newFrame, newFrame, Size(), 0.5, 0.5, INTER_LINEAR);
         
-        image = thresholdImage(newFrame, 'B', true);
+        image = thresholdImage(newFrame, color, true);
         dispImage(image, "Calibration", 2);
         int c = waitKey(10);
         if ((char)c == 27)
@@ -150,6 +161,7 @@ void dispImage(Mat image, String title, int loc)
 {
     // 0 2 4
     // 1 3 5
+    waitKey(1);
     namedWindow(title, 1);
     //resize(image, image, Size(), 0.55 / resizeRatio, 0.55 / resizeRatio, INTER_AREA);
     imshow(title, image);
@@ -205,6 +217,18 @@ void setColor(int colorFront)
         iHighS = 255;
         iLowV = 35;
         iHighV = 255;
+        break;
+
+    case int('w'):
+        method = THRESH_BINARY;
+        erode_val = 2;
+        threshold_bw = 243;
+        break;
+
+    case int('b'):
+        method = THRESH_BINARY_INV;
+        erode_val = 7;
+        threshold_bw = 72;
         break;
     }
 }

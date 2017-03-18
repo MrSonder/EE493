@@ -15,7 +15,22 @@ int main(int argc, char *argv[])
     cout << "ArduinoConnected:" << ArduinoConnected << endl;
     int colorFront = 'B';
     int colorFlag = 'P';
-    calibrateThreshold('R');
+    //calibrateThreshold('R');
+    //calibrateThreshold('b');
+
+
+    Mat image1, image2;
+    Mat image3, image4;
+
+
+    
+    while(true){
+        newFrame = imread("board2.png");
+        newFrame = getObjectOfColor(newFrame, 'b', 'R');
+        dispImage(newFrame, "im", 0);
+        //templateExtract(newFrame, 'B');
+}
+        //templateMatching(newFrame);
 
 
 /*
@@ -29,10 +44,13 @@ int main(int argc, char *argv[])
 
 
 
-        //templateExtract(newFrame, 'B');
-        //newFrame = imread("board.jpg");
-        //templateMatching(newFrame);
         
+       
+       
+       
+       
+       
+       
         /*int b = waitKey(1);	
         if ( b == 'q')
         {camera.release(); camera.open(0); while(!camera.read(newFrame) ) {continue;}}
