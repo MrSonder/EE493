@@ -37,8 +37,10 @@ time_t start, end;
 Mat newFrame;
 string positionText = "";
 //VideoCapture camera(1);
+
 VideoCapture camera;
 VideoCapture camera2;
+
 int offset = 0; // 24=-1
 int iLowH, iHighH, iLowS, iHighS, iLowV, iHighV;
 int filterRatio = 1;
@@ -87,7 +89,6 @@ void calibrateThreshold(int color)
     {
         camera >> newFrame; // get a new frame from camera
         resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
-
         image = thresholdImage(newFrame, 'B', true);
         dispImage(image, "Calibration", 2);
         int c = waitKey(10);
@@ -178,6 +179,15 @@ void setColor(int colorFront)
         break;
 
     case int('G'):
+        iLowH = 50;
+        iHighH = 85;
+        iLowS = 0;
+        iHighS = 255;
+        iLowV = 0;
+        iHighV = 255;
+        break;
+
+    case int('P'):
         iLowH = 50;
         iHighH = 85;
         iLowS = 0;

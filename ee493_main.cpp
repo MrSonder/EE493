@@ -14,14 +14,16 @@ int main(int argc, char *argv[])
     time(&start);
     cout << "ArduinoConnected:" << ArduinoConnected << endl;
     int colorFront='B';
-    //calibrateThreshold('B');
+    calibrateThreshold('B');
 
+/*
     searchColorMethod(colorFront);
     goTowardsObjectMethod(colorFront);
 
     //go to flag
-    searchColorMethod('B');
-    goTowardsObjectMethod('B');
+    searchColorMethod('P');
+    goTowardsObjectMethod('P');
+*/
 
         //templateExtract(newFrame, 'B');
         //templateMatching(newFrame);
