@@ -11,6 +11,7 @@ int cam_index_2 = 1 - cam_index_1;
 
 int main(int argc, char *argv[])
 {
+    time(&start);
     cout << "ArduinoConnected:" << ArduinoConnected << endl;
     int colorFront='B';
     //calibrateThreshold('B');

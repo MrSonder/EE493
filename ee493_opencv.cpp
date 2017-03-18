@@ -24,7 +24,7 @@ bool goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnec
 void statusBar(Point2f center);
 
 Point2f findCenter(Mat image);
-Mat thresholdImage(Mat image, int colorFront, bool calibration );
+Mat thresholdImage(Mat image, int colorFront, bool calibration);
 double fillRatio(vector<Point> contour, int object);
 int getFPS();
 int getDistance();
@@ -33,7 +33,7 @@ void calibrateThreshold(int color);
 void dispImage(Mat image, String title, int loc);
 void setColor(int colorFront);
 
-time_t start;
+time_t start, end;
 Mat newFrame;
 string positionText = "";
 //VideoCapture camera(1);
@@ -50,18 +50,18 @@ float circleRadius;
 int lockToleranceInt = 75;
 float angle;
 float slopeLine;
+double FPSCounter = 1;
 
-
-Mat thresholdImage(Mat image, int colorFront, bool calibration )
+Mat thresholdImage(Mat image, int colorFront, bool calibration)
 {
-    
+
     if (!calibration)
         setColor(colorFront);
-    
-    Mat imageOUT=image.clone();
+
+    Mat imageOUT = image.clone();
     cvtColor(imageOUT, imageOUT, COLOR_BGR2HSV);
     inRange(imageOUT, Scalar(iLowH, iLowS, iLowV),
-        Scalar(iHighH, iHighS, iHighV), imageOUT);   
+            Scalar(iHighH, iHighS, iHighV), imageOUT);
     erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
     medianBlur(imageOUT, imageOUT, 5);
     //erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 3);
@@ -69,71 +69,70 @@ Mat thresholdImage(Mat image, int colorFront, bool calibration )
     return imageOUT;
 }
 
-void calibrateThreshold(int color){
+void calibrateThreshold(int color)
+{
     setColor(color);
     char windowTitle[] = "Calibration";
     namedWindow(windowTitle, 1);
-    moveWindow(windowTitle, 500,500);
+    moveWindow(windowTitle, 500, 500);
     cvCreateTrackbar("dilate iteration", windowTitle, &filterRatio, 10);
     cvCreateTrackbar("LowHue", windowTitle, &iLowH, 179);
     cvCreateTrackbar("HighHue", windowTitle, &iHighH, 179);
-    cvCreateTrackbar("LowSat", windowTitle, &iLowS, 255); 
+    cvCreateTrackbar("LowSat", windowTitle, &iLowS, 255);
     cvCreateTrackbar("HighSat", windowTitle, &iHighS, 255);
     cvCreateTrackbar("LowVal", windowTitle, &iLowV, 255);
     cvCreateTrackbar("HighVal", windowTitle, &iHighV, 255);
     Mat image;
-    while (true) {
+    while (true)
+    {
         camera >> newFrame; // get a new frame from camera
-        resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio,INTER_LINEAR);
+        resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
 
         image = thresholdImage(newFrame, 'B', true);
         dispImage(image, "Calibration", 2);
         int c = waitKey(10);
-        if ((char)c == 27) {
+        if ((char)c == 27)
+        {
             cvDestroyWindow(windowTitle);
             exit(0);
         }
-
     }
 }
 
 void drawStraightLine(Mat *img, Point2f p1, Point2f p2)
 {
-        Point2f p, q;
-        // Check if the line is a vertical line because vertical lines don't have slope
-        if (p1.x != p2.x)
-        {
-                p.x = 0;
-                q.x = img->cols;
-                // Slope equation (y1 - y2) / (x1 - x2)
-                float m = (p1.y - p2.y) / (p1.x - p2.x);
-                // Line equation:  y = mx + b
-                float b = p1.y - (m * p1.x);
-                p.y = m * p.x + b;
-                q.y = m * q.x + b;
-        }
-        else
-        {
-                p.x = q.x = p2.x;
-                p.y = 0;
-                q.y = img->rows;
-        }
+    Point2f p, q;
+    // Check if the line is a vertical line because vertical lines don't have slope
+    if (p1.x != p2.x)
+    {
+        p.x = 0;
+        q.x = img->cols;
+        // Slope equation (y1 - y2) / (x1 - x2)
+        float m = (p1.y - p2.y) / (p1.x - p2.x);
+        // Line equation:  y = mx + b
+        float b = p1.y - (m * p1.x);
+        p.y = m * p.x + b;
+        q.y = m * q.x + b;
+    }
+    else
+    {
+        p.x = q.x = p2.x;
+        p.y = 0;
+        q.y = img->rows;
+    }
 
-        line(*img, p, q, Scalar(255, 100, 100), 1);
-        
-        angle=atan((p1.y - p2.y) / (p1.x - p2.x))*180/PI;
+    line(*img, p, q, Scalar(255, 100, 100), 1);
 
+    angle = atan((p1.y - p2.y) / (p1.x - p2.x)) * 180 / PI;
 }
 
 int getFPS()
 {
-    time_t end;
-    end = clock();
-    double fps = CLOCKS_PER_SEC / (end - start);
-    start = end;
+    time(&end);
+    double fps = FPSCounter / (end - start);
+    FPSCounter++;
     return fps;
 }
-
 
 void dispImage(Mat image, String title, int loc)
 {
@@ -142,14 +141,15 @@ void dispImage(Mat image, String title, int loc)
     namedWindow(title, 1);
     resize(image, image, Size(), 0.55 / resizeRatio, 0.55 / resizeRatio, INTER_AREA);
     imshow(title, image);
-    int x = 50 + (loc/2)*380;
-    int y = 30 + (loc%2)*370;
+    int x = 50 + (loc / 2) * 380;
+    int y = 30 + (loc % 2) * 370;
     moveWindow(title, x, y);
 }
 
 void setColor(int colorFront)
 {
-    switch (colorFront) {
+    switch (colorFront)
+    {
     case int('B'):
         iLowH = 70;
         iHighH = 110;
@@ -202,32 +202,33 @@ int getDistance()
 
     int distance = (distance1 > 110) ? int(distance2) : int(distance1);
 
-    return distance;  //modified to test slopeLine
+    return distance; //modified to test slopeLine
 }
 
 double fillRatio(vector<Point> contour, int object)
 {
     Point_<float> circleCenter;
     RotatedRect boundRect;
-    double areaCont = contourArea(contour, false); 
-    double fillRatio=0;
-    //area of rectange : r.width * r.height 
+    double areaCont = contourArea(contour, false);
+    double fillRatio = 0;
+    //area of rectange : r.width * r.height
 
-    if (object == 'R'){
-    boundRect = minAreaRect(contour);
-    double rectEnvelopeArea =boundRect.size.width * boundRect.size.height;
-    fillRatio = abs(boundRect.angle);
+    if (object == 'R')
+    {
+        boundRect = minAreaRect(contour);
+        double rectEnvelopeArea = boundRect.size.width * boundRect.size.height;
+        fillRatio = abs(boundRect.angle);
     }
-    else if (object == 'C'){
-    minEnclosingCircle(contour, circleCenter, circleRadius);
-    double circleEnvelopeArea = PI * circleRadius * circleRadius;
-    fillRatio = areaCont / (0.9 * circleEnvelopeArea);
-    //angle = acos(fillRatio) * 180.0 / 3.1412;
+    else if (object == 'C')
+    {
+        minEnclosingCircle(contour, circleCenter, circleRadius);
+        double circleEnvelopeArea = PI * circleRadius * circleRadius;
+        fillRatio = areaCont / (0.9 * circleEnvelopeArea);
+        //angle = acos(fillRatio) * 180.0 / 3.1412;
     }
 
     return fillRatio;
 }
-
 
 Point2f findCenter(Mat image)
 {
@@ -236,15 +237,15 @@ Point2f findCenter(Mat image)
     double dM01 = oMoments.m01;
     double dM10 = oMoments.m10;
     double dArea = oMoments.m00;
-    
+
     int posX = dM10 / dArea;
     int posY = dM01 / dArea;
 
-    return Point(posX,posY);
+    return Point(posX, posY);
 }
 
-
-void statusBar(Point2f center){
+void statusBar(Point2f center)
+{
 
     ostringstream statusBar;
     string statusText = "";
@@ -264,5 +265,4 @@ void statusBar(Point2f center){
     statusText.append(statusBar.str());
 
     displayStatusBar("Threshold", statusText, 0);
-
 }
