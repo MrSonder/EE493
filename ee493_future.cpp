@@ -1,13 +1,14 @@
-void templateMatching(Mat img);
+Mat templateMatching(Mat img);
 void rectangleMask(Mat image, RotatedRect rectangle);
-void templateExtract(Mat imageIn, int color);
+Mat templateExtract(Mat imageIn, int color);
 
-void templateExtract(Mat imageIn, int color)
+Mat templateExtract(Mat imageIn, int color)
 {
     Mat image1, image2;
-    image1 = getObjectOfColor(imageIn, color, 'R');
+    image1 = thresholdImage(imageIn, color, false);
     imageIn.copyTo(image2, image1);
     dispImage(image2, "Mask", 4);
+    return image2;
 }
 
 void rectangleMask(Mat image, RotatedRect rectangle)
@@ -26,11 +27,11 @@ void rectangleMask(Mat image, RotatedRect rectangle)
     //dispImage(imageOut, "masked" ,4);
 }
 
-void templateMatching(Mat img) //not working
+Mat templateMatching(Mat img) //not working
 {
     Mat result;
 
-    Mat templ = imread("blue3.png", CV_LOAD_IMAGE_COLOR); // Read the file
+    Mat templ = imread("blue_filt.jpg", CV_LOAD_IMAGE_COLOR); // Read the file
 
     /// Create the result matrix
     int result_cols = img.cols - templ.cols + 1;
@@ -40,24 +41,13 @@ void templateMatching(Mat img) //not working
 
     /// Do the Matching and Normalize
     matchTemplate(img, templ, result, CV_TM_CCORR_NORMED);
+    result = result * 255;
     //normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
-    threshold(result, result, 0.8, 1, THRESH_TOZERO);
-    dispImage(result, "matching", 3);
-    dispImage(img, "source", 0);
-    //testWindow(result,"matching");
-    /// Localizing the best match with minMaxLoc
-    double minVal;
-    double maxVal;
-    Point minLoc;
-    Point maxLoc;
-    Point matchLoc;
+    threshold(result, result, 195, 255, THRESH_BINARY);
 
-    minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, Mat());
-    matchLoc = maxLoc;
+    resize(result, result, Size(round(img.cols), round(img.rows)), 0, 0, INTER_LINEAR);
 
-    /// Show me what you got
-    rectangle(newFrame, matchLoc, Point(matchLoc.x + templ.cols, matchLoc.y + templ.rows), Scalar::all(0), 2, 8, 0);
-    rectangle(result, matchLoc, Point(matchLoc.x + templ.cols, matchLoc.y + templ.rows), Scalar::all(0), 2, 8, 0);
+    return result;
 }
 
 void calibrateThresholdBlackWhite(int color)
@@ -73,8 +63,8 @@ void calibrateThresholdBlackWhite(int color)
     Mat image;
     while (true)
     {
-        //camera >> newFrame; // get a new frame from camera
-        newFrame = imread("board3.png");
+        camera >> newFrame; // get a new frame from camera
+        //newFrame = imread("board3.png");
         resize(newFrame, newFrame, Size(), 1, 1, INTER_LINEAR);
         image = thresholdImage(newFrame, color, true);
         dispImage(image, "Calibration", 2);

@@ -108,8 +108,8 @@ void calibrateThreshold(int color)
     Mat image;
     while (true)
     {
-        //camera >> newFrame; // get a new frame from camera
-        newFrame = imread("board3.png");
+        camera >> newFrame; // get a new frame from camera
+        //newFrame = imread("board3.png");
 
         resize(newFrame, newFrame, Size(), 0.5, 0.5, INTER_LINEAR);
 

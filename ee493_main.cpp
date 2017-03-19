@@ -14,10 +14,10 @@ void goTowardsObjectMethod(int color);
 void searchColorMethod(int color);
 void switchToCamera(int index);
 void startCamera(int index);
-
+void getTriangleArray(Mat image);
 void calibrateDoubleCamera();
-Mat getTriangleContours(Mat image, int trig_index);
-Point2f getBoardSlot(Mat img, int trig_index);
+Mat getTriangleContours(Mat image, int trig_index_1, int trig_index_2);
+Point2f getBoardSlot(Mat img, int trig_index_1, int trig_intex_2);
 int cam_index_1 = 1;
 int cam_index_2 = 1 - cam_index_1;
 
@@ -29,29 +29,69 @@ int main(int argc, char *argv[])
     cout << "ArduinoConnected:" << ArduinoConnected << endl;
     int colorFront = 'B';
     int colorFlag = 'P';
-    //calibrateThreshold('R');
+    startCamera(0);
+    calibrateThreshold('P');
     //calibrateDoubleCamera();
+/*
+    Mat image_temp, image;
+    Mat image_temp2;
+    Mat image_thresh;
+    Mat temp2;
+    Point2f point_cyc;
+    int game[7][7];
+      newFrame = imread("board3.png");
+    
+    Point2f point;
+    int trig_x[7];
+    int trig_avg=0;
+    cout<<"triangles"<<endl;
+    for(int i=0; i<=6; i++){
+        point = getBoardSlot(newFrame, i, i);
+        trig_x[i] = point.x;
+        cout<<point.y<<endl;
+        trig_avg = trig_avg + point.y/7;
+    }
+    cout<< trig_avg <<endl;
 
-    /*
-    while (true)
+cout<<"cylnders"<<endl;
+
+  
+    image = templateMatching(templateExtract(newFrame, 'B'));
+    Mat imageSelected = Mat::zeros(image.size(), CV_8UC1);
+    vector<vector<Point> > contours; // Vector for storing contour
+    vector<Vec4i> hierarchy;
+    image.convertTo(image, CV_8UC1);
+    cout<<image.type()<<endl;
+    findContours(image, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+    for (int i = 0; i < contours.size(); i++) // iterate through each contour.
     {
-        newFrame = imread("board2.png");
-        getBoardSlot(newFrame, 0);
-        //templateExtract(newFrame, 'B');
-    }*/
-    //templateMatching(newFrame);
+    imageSelected = Mat::zeros(image.size(), CV_8UC1);
+    drawContours(imageSelected, contours, i, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
+    Point2f point_cyc = findCenter(imageSelected);
+    cout<<point_cyc.y<<endl;
+    }
+    dispImage(newFrame, "matching", 3);
 
-    /*
+        //getBoardSlot(newFrame, 0);
+        //
+
+*/
+
+    
+
+
+
     searchColorMethod(colorFront);
     goTowardsObjectMethod(colorFront);
 
     //go to flag
     searchColorMethod(colorFlag);
     goTowardsObjectMethod(colorFlag);
-*/
+
 
     return 0;
 }
+
 void getPanaroma()
 {
     startCamera(0);
@@ -117,33 +157,38 @@ void calibrateDoubleCamera()
         }
     }
 }
-Point2f getBoardSlot(Mat img, int trig_index)
-{
 
+Point2f getBoardSlot(Mat img, int trig_index_1, int trig_intex_2)
+{
     Mat imageContours = thresholdImage(img, 'w', false);
     flip(imageContours, imageContours, 1);
     transpose(imageContours, imageContours);
-    imageContours = getTriangleContours(imageContours, trig_index);
+    imageContours = getTriangleContours(imageContours, trig_index_1, trig_intex_2);
     flip(imageContours, imageContours, 0);
     transpose(imageContours, imageContours);
-    Point2f point_mid = findCenter(imageContours);
+    Point2f point = findCenter(imageContours);
     dispImage(imageContours, "3", 4);
-    return point_mid;
+    return point;
 }
 
-Mat getTriangleContours(Mat image, int trig_index)
+Mat getTriangleContours(Mat image, int trig_index_1, int trig_index_2)
 {
     Mat imageSelected = Mat::zeros(image.size(), CV_8UC1);
     vector<vector<Point> > contours; // Vector for storing contour
     vector<Vec4i> hierarchy;
 
     findContours(image, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-    drawContours(imageSelected, contours, trig_index, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
-    drawContours(imageSelected, contours, trig_index + 1, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
 
+    for (int i = trig_index_1; i <= trig_index_2; i++) // iterate through each contour.
+    {
+    drawContours(imageSelected, contours, i, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
+    }
     return imageSelected;
 }
 
+
+
+/*
 void goTowardsSlot(int base_speed, Mat img, int trig_index, bool ArduinoConnected, int y_threshold, int turn_rate_divider)
 {
     Point2f center = getBoardSlot(img, trig_index);
@@ -169,11 +214,13 @@ void goTowardsSlot(int base_speed, Mat img, int trig_index, bool ArduinoConnecte
         txArduino(driveMotor(0, 0));
     }
 }
+*/
 void switchToCamera(int index)
 {
     camera.release();
     startCamera(index);
 }
+
 void startCamera(int index)
 {
     camera.open(index);
@@ -209,6 +256,7 @@ void goTowardsObjectMethod(int color)
         resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
         object_exist = goTowardsObject(150, newFrame, color, ArduinoConnected, 110, 5);
     }
+    
 
     camera.release();
 
