@@ -2,13 +2,13 @@
 #include "ee493_future.cpp"
 #include "ee493_arduino.cpp"
 #include <cmath>
-
 #include <iostream>
 #include <fstream>
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/stitching.hpp"
 //#include "opencv2/stitching/stitcher.hpp"
+void getPanaroma();
 bool searchColor(Mat img, int color);
 void goTowardsObjectMethod(int color);
 void searchColorMethod(int color);
@@ -29,8 +29,13 @@ int main(int argc, char *argv[])
     cout << "ArduinoConnected:" << ArduinoConnected << endl;
     int colorFront = 'B';
     int colorFlag = 'P';
-    startCamera(0);
-    calibrateThreshold('P');
+    
+    //startCamera(0);
+    /*while(true){
+    camera >> newFrame;
+    getObjectOfColor(newFrame, 'P');
+    }*/
+    //calibrateThreshold('P');
     //calibrateDoubleCamera();
 /*
     Mat image_temp, image;
@@ -77,7 +82,7 @@ cout<<"cylnders"<<endl;
 
 */
 
-    
+    //getPanaroma();
 
 
 
@@ -97,7 +102,7 @@ void getPanaroma()
     startCamera(0);
 
     Mat pano;
-    Stitcher stitcher = Stitcher::createDefault(false);
+    Stitcher stitcher = Stitcher::createDefault(true);
     int b = 0;
 
     while (true)
@@ -186,6 +191,9 @@ Mat getTriangleContours(Mat image, int trig_index_1, int trig_index_2)
     return imageSelected;
 }
 
+void getFrameFromCamera(){
+    
+}
 
 
 /*
@@ -238,11 +246,13 @@ void searchColorMethod(int color)
     while (!object_exist)
     {
         camera >> newFrame;
-        txArduino(driveMotor(70, -70));
+        txArduino(driveMotor(-70, 70));
         resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
         object_exist = searchColor(newFrame, color);
+        //dispImage(newFrame, "search", 0);
+        
     }
-    txArduino(driveMotor(-70, 70));
+    driveMotorForSeconds(1, 50, -50);
     txArduino(driveMotor(0, 0));
 }
 
@@ -320,14 +330,14 @@ bool searchColor(Mat img, int color)
     return object_exist;
 }
 
-Mat getObjectOfColor(Mat image, int colorFront, int object)
+Mat getObjectOfColor(Mat image, int colorFront)
 {
     Mat imageContours = thresholdImage(image, colorFront, false);
-    Mat imageSelected = getLargestArea(imageContours, object);
+    Mat imageSelected = getLargestArea(imageContours, colorFront);
     return imageSelected;
 }
 
-Mat getLargestArea(Mat image, int object)
+Mat getLargestArea(Mat image, int colorFront)
 {
     Mat imageSelected = Mat::zeros(image.size(), CV_8UC1);
     vector<vector<Point> > contours; // Vector for storing contour
@@ -338,14 +348,27 @@ Mat getLargestArea(Mat image, int object)
     int largest_area = 0;
     int largest_contour_index = 0;
     int largest_fillRatio = 0;
+    int area_threshold = 0;
+    
+    if(colorFront == 'R' || colorFront == 'B')
+    {
+        cout << 'C' <<endl;
+        area_threshold = 0;
+    }
+    if(colorFront == 'P')
+    {
+        cout << 'P' <<endl;
+        area_threshold = 500;
+    }
 
     findContours(image, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-
+    
+    double a ;
     for (int i = 0; i < contours.size(); i++) // iterate through each contour.
     {
         double a = contourArea(contours[i], false);
         //if (contourArea(contours[i], false)>2000){
-        if (a > largest_area)
+        if (a > largest_area && a > area_threshold)
         {
             largest_area = a;
             largest_contour_index = i; // Store the index of largest contour
@@ -353,9 +376,10 @@ Mat getLargestArea(Mat image, int object)
             boundRect = minAreaRect(contours[i]);
         }
     }
+    cout<<endl<<largest_area<<endl;
 
-    if (object == 'R')
-        rectangleMask(image, boundRect);
+    
+
 
     drawContours(imageSelected, contours, largest_contour_index, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
 
@@ -368,12 +392,12 @@ Point2f drawCenterLine(Mat imageIn, int colorFront)
     Mat image1, image2;
     Mat image3, image4;
 
-    image1 = getObjectOfColor(imageIn, 'Y', 'R');
+    image1 = getObjectOfColor(imageIn, 'Y');
     Point2f point_mid = findCenter(image1);
 
     //putText(imageIn, format("Angle : %d",angle), point_mid, FONT_HERSHEY_COMPLEX_SMALL, 0.5, Scalar(0, 0, 0));
 
-    image2 = getObjectOfColor(imageIn, colorFront, 'C');
+    image2 = getObjectOfColor(imageIn, colorFront);
     Point2f point_front = findCenter(image2);
 
     image4 = Mat::zeros(imageIn.size(), CV_8UC3);

@@ -18,7 +18,7 @@ using namespace std;
 float resizeRatio = 0.5;
 
 Point2f drawCenterLine(Mat imageIn, int colorFront);
-Mat getObjectOfColor(Mat image, int colorFront, int object);
+Mat getObjectOfColor(Mat image, int colorFront);
 Mat getLargestArea(Mat image, int object);
 bool goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnected, int y_threshold, int turn_rate_divider);
 void statusBar(Point2f center);
@@ -177,11 +177,11 @@ void setColor(int colorFront)
     switch (colorFront)
     {
     case int('B'):
-        iLowH = 60;
+        iLowH = 50;
         iHighH = 105;
-        iLowS = 45;
+        iLowS = 25;
         iHighS = 255;
-        iLowV = 45;
+        iLowV = 25;
         iHighV = 255;
         break;
 
@@ -213,11 +213,11 @@ void setColor(int colorFront)
         break;
 
     case int('P'):
-        iLowH = 120;
+        iLowH = 115;
         iHighH = 160;
-        iLowS = 15;
+        iLowS = 45;
         iHighS = 255;
-        iLowV = 35;
+        iLowV = 45;
         iHighV = 255;
         break;
 

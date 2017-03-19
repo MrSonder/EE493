@@ -44,9 +44,7 @@ Mat templateMatching(Mat img) //not working
     result = result * 255;
     //normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
     threshold(result, result, 195, 255, THRESH_BINARY);
-
     resize(result, result, Size(round(img.cols), round(img.rows)), 0, 0, INTER_LINEAR);
-
     return result;
 }
 
