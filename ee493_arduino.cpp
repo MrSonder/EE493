@@ -11,7 +11,7 @@ void txTerminal(string data);
 int turn_PWM = 100;
 double second_per_turn = 4.4;
 double camera_center_to_object_duration = 5.5;
-bool ArduinoConnected=true;
+bool ArduinoConnected=false;
 
 void txArduino(string data)
 {

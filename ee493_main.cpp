@@ -30,11 +30,13 @@ int main(int argc, char *argv[])
     int colorFront = 'B';
     int colorFlag = 'P';
     
-    //startCamera(0);
-    /*while(true){
+    startCamera(0);
+    while(true){
     camera >> newFrame;
-    getObjectOfColor(newFrame, 'P');
-    }*/
+    resize(newFrame, newFrame, Size(), 0.6, 0.6, INTER_LINEAR);
+    //getObjectOfColor(newFrame, 'P');
+    dispImage(newFrame, "xx", 0);
+    }
     //calibrateThreshold('P');
     //calibrateDoubleCamera();
 /*

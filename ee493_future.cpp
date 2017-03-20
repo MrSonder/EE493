@@ -6,7 +6,9 @@ Mat templateExtract(Mat imageIn, int color)
 {
     Mat image1, image2;
     image1 = thresholdImage(imageIn, color, false);
+
     imageIn.copyTo(image2, image1);
+    
     dispImage(image2, "Mask", 4);
     return image2;
 }
