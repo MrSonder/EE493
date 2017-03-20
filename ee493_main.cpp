@@ -30,6 +30,8 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+
+
 void getBoardInfo(){
     Mat image_temp, image;
     Mat image_temp2;
