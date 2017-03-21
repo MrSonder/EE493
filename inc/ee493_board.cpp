@@ -6,6 +6,10 @@ vector<int> getTriangleLocations(Mat img, int axis);
 vector<int> getObjectLocations(Mat img, int axis);
 void setLocations(vector<int> input_vector, int comparator);
 
+vector<vector<int>> setXThreshold(vector<int> triangle_vector);
+void setPos(Point2f point, vector<vector<int>> threshold_vector);
+int setY(int y,  vector<int> input_vector);
+int setX(int x, int y, vector<vector<int>> input_vector );
 void setXLocations(vector<int> input_vector, vector<int> threshold_vector);
 void getBoardInfo()
 {
@@ -25,7 +29,6 @@ void getBoardInfo()
     triangle_x = getTriangleLocations(newFrame, 'x');
     object_x = getObjectLocations(newFrame, 'x');
 
-
     vector<int> vector_deneme = {150, 155, 170, 175, 190, 195};
     vector<int> vector_thresh_deneme = {
         160, 180, 200,
@@ -35,11 +38,10 @@ void getBoardInfo()
 
     //setThresholds(triangle_x, 0);
 
-    setLocations(triangle_x, 0);
+    //setLocations(triangle_x, 0);
 
-setXLocations(object_x, triangle_x);
-
-
+    //setXLocations(object_x, triangle_x);
+    setXThreshold(triangle_x);
 }
 
 vector<int> getObjectLocations(Mat img, int axis)
@@ -49,7 +51,7 @@ vector<int> getObjectLocations(Mat img, int axis)
     Point2f point;
     vector<int> output_vector;
     image = templateMatching(templateExtract(img, 'R'));
-       //while(true)
+    //while(true)
     dispImage(image, "matching", 3);
     Mat imageSelected = Mat::zeros(image.size(), CV_8UC1);
     vector<vector<Point>> contours; // Vector for storing contour
@@ -118,7 +120,6 @@ vector<int> setThresholds(vector<int> input_vector, int comparator)
     }
     cout << "\nthreshold values:" << endl;
 
-    
     for (int i = 0; i < threshold_vector.size(); i++)
     {
         cout << *(std::begin(threshold_vector) + i) << endl;
@@ -191,3 +192,80 @@ void setXLocations(vector<int> input_vector, vector<int> threshold_vector)
     cout << "done" << endl;
 }
 
+void setPos(Point2f point, vector<vector<int>> threshold_vector, vector<int> y_vector)
+{
+    int y = setY(point.y, y_vector);
+    setX(point.x, y, threshold_vector );
+}
+int setX(int x, int y, vector<vector<int>> input_vector )
+{
+    //threshold_vector.at(6 - y);
+    vector<int> threshold_vector = input_vector.at(6 - y);
+    for (int k = 0; k < (threshold_vector.size()); k++)
+    {
+        
+        bool location_test = (threshold_vector[k] <x) && (x < threshold_vector[k + 1]);
+        if (location_test)
+        {
+            return k;
+        }
+        if (k == threshold_vector.size() - 1)
+        {
+            return k;
+        }
+    }
+}
+
+int setY(int y,  vector<int> input_vector)
+{
+    vector<int> threshold_vector = setThresholds(input_vector, 10);
+    for (int k = 0; k < (threshold_vector.size()); k++)
+    {
+        bool location_test = (threshold_vector[k] < y) && (y < threshold_vector[k + 1]);
+        if (location_test)
+        {
+            return ( threshold_vector.size() - k);
+        }
+        if (k == threshold_vector.size() - 1)
+        {
+            return ( threshold_vector.size() - k);
+        }
+    }
+}
+
+vector<vector<int>> setXThreshold(vector<int> triangle_vector)
+{
+    vector<vector<int>> threshold_vector;
+
+    threshold_vector.push_back(triangle_vector);
+    cout << "avg:" << (triangle_vector[0] + triangle_vector[0 + 1]) / 2 << endl;
+
+    int initial_size = triangle_vector.size() - 2;
+    for (int k = 0; k < initial_size; k++)
+    {
+        vector<int> temp_vector;
+        for (int i = 0; i < (triangle_vector.size() - 1); i++)
+        {
+            temp_vector.push_back((triangle_vector[i] + triangle_vector[i + 1]) / 2);
+        }
+
+        for (int i = 0; i < temp_vector.size(); i++)
+        {
+            cout << *(std::begin(temp_vector) + i) << endl;
+        }
+        cout << "done" << endl;
+
+        threshold_vector.push_back(temp_vector);
+        triangle_vector = temp_vector;
+    }
+
+    /*
+    cout << "setXThreshold" << endl;
+    for (int i = 0; i < triangle_vector.size(); i++)
+    {
+        cout << *(std::begin(triangle_vector) + i) << endl;
+    }
+    cout << "done" << endl;*/
+
+    return threshold_vector;
+}
