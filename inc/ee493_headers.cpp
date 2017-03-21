@@ -21,7 +21,7 @@ bool ArduinoConnected = false;
 int cam_index_1 = 1;
 int cam_index_2 = 1 - cam_index_1;
 
-time_t start, end;
+time_t start, end_t;
 Mat newFrame;
 string positionText = "";
 

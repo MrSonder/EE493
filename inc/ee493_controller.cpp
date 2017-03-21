@@ -31,8 +31,6 @@ void goTowardsObjectMethod(int color)
         getFrameFromCamera();
         object_exist = goTowardsObject(120, newFrame, color, ArduinoConnected, 105, 4);
     }
-    
-
     camera.release();
 */
     startCamera(cam_index_2);
@@ -41,11 +39,9 @@ void goTowardsObjectMethod(int color)
     {
         camera >> newFrame;
         resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
-       
         object_exist = goTowardsObject(90, newFrame, color, ArduinoConnected, 95, 4);
     }
 }
-
 
 /*
 void goTowardsSlot(int base_speed, Mat img, int trig_index, bool ArduinoConnected, int y_threshold, int turn_rate_divider)

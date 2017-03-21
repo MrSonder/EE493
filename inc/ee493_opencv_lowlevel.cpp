@@ -192,6 +192,47 @@ Point2f findCenter(Mat image)
     return Point(posX, posY);
 }
 
+
+void calibrateThresholdBlackWhite(int color)
+{
+    setColor(color);
+    char windowTitle[] = "Calibration";
+    namedWindow(windowTitle, 1);
+    moveWindow(windowTitle, 500, 500);
+    cvCreateTrackbar("Threshold", windowTitle, &threshold_bw, 255);
+    cvCreateTrackbar("Erode", windowTitle, &erode_val, 30);
+    cvCreateTrackbar("Dilate", windowTitle, &dilate_val, 30);
+    cvCreateTrackbar("Filter", windowTitle, &filter, 20);
+    Mat image;
+    while (true)
+    {
+        camera >> newFrame; // get a new frame from camera
+        //newFrame = imread("board3.png");
+        resize(newFrame, newFrame, Size(), 1, 1, INTER_LINEAR);
+        image = thresholdImage(newFrame, color, true);
+        dispImage(image, "Calibration", 2);
+        int c = waitKey(10);
+        if ((char)c == 27)
+        {
+            cvDestroyWindow(windowTitle);
+            exit(0);
+        }
+    }
+}
+
+Mat thresholdImageBlackWhite(Mat image, int color, bool calibration)
+{
+    Mat imageOUT = image.clone();
+    cvtColor(imageOUT, imageOUT, COLOR_BGR2GRAY);
+
+    threshold(imageOUT, imageOUT, threshold_bw, 255, method);
+    erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), erode_val);
+    medianBlur(imageOUT, imageOUT, 5);
+    dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 3);
+    return imageOUT;
+}
+
+
 Mat templateExtract(Mat imageIn, int color)
 {
     Mat image1, image2;

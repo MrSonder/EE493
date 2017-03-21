@@ -10,11 +10,31 @@ Mat getObjectOfColor(Mat image, int colorFront);
 Mat getLargestArea(Mat image, int object);
 double fillRatio(vector<Point> contour, int object);
 
+Mat templateExtract(Mat imageIn, int color);
+Mat templateMatching(Mat img);
+
+Mat templateMatching(Mat img) //not working
+{
+    Mat result;
+
+    Mat templ = imread("img/red_filt.jpg", CV_LOAD_IMAGE_COLOR); // Read the file
+    /// Create the result matrix
+    int result_cols = img.cols - templ.cols + 1;
+    int result_rows = img.rows - templ.rows + 1;
+    //result.create( result_rows, result_cols, CV_32FC1 );
+    /// Do the Matching and Normalize
+    matchTemplate(img, templ, result, CV_TM_CCORR_NORMED);
+    result = result * 255;
+    //normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
+    threshold(result, result, 195, 255, THRESH_BINARY);
+    //resize(result, result, Size(round(img.cols), round(img.rows)), 0, 0, INTER_LINEAR);
+    return result;
+}
 
 int getFPS()
 {
-    time(&end);
-    double fps = FPSCounter / (end - start);
+    time(&end_t);
+    double fps = FPSCounter / (end_t- start);
     FPSCounter++;
     return fps;
 }
@@ -44,8 +64,6 @@ double fillRatio(vector<Point> contour, int object)
     return fillRatio;
 }
 
-
-
 Point2f drawCenterLine(Mat imageIn, int colorFront)
 {
     // draws a line through the object and returns angle of the line
@@ -68,8 +86,6 @@ Point2f drawCenterLine(Mat imageIn, int colorFront)
     return point_front;
 }
 
-
-
 Mat getObjectOfColor(Mat image, int colorFront)
 {
     Mat imageContours = thresholdImage(image, colorFront, false);
@@ -89,21 +105,21 @@ Mat getLargestArea(Mat image, int colorFront)
     int largest_contour_index = 0;
     int largest_fillRatio = 0;
     int area_threshold = 0;
-    
-    if(colorFront == 'R' || colorFront == 'B')
+
+    if (colorFront == 'R' || colorFront == 'B')
     {
-        
+
         area_threshold = 0;
     }
-    if(colorFront == 'P')
+    if (colorFront == 'P')
     {
-        
+
         area_threshold = 500;
     }
 
     findContours(image, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-    
-    double a ;
+
+    double a;
     for (int i = 0; i < contours.size(); i++) // iterate through each contour.
     {
         double a = contourArea(contours[i], false);
@@ -117,13 +133,10 @@ Mat getLargestArea(Mat image, int colorFront)
         }
     }
 
-
     drawContours(imageSelected, contours, largest_contour_index, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
 
     return imageSelected;
 }
-
-
 
 void getPanaroma()
 {
@@ -192,7 +205,7 @@ Mat getTriangleContours(Mat image, int trig_index_1, int trig_index_2)
 
     for (int i = trig_index_1; i <= trig_index_2; i++) // iterate through each contour.
     {
-    drawContours(imageSelected, contours, i, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
+        drawContours(imageSelected, contours, i, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
     }
     return imageSelected;
 }
