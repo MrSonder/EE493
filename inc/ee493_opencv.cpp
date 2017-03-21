@@ -191,6 +191,7 @@ Point2f getBoardSlot(Mat img, int trig_index_1, int trig_intex_2)
     flip(imageContours, imageContours, 0);
     transpose(imageContours, imageContours);
     Point2f point = findCenter(imageContours);
+
     dispImage(imageContours, "3", 4);
     return point;
 }

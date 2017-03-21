@@ -16,7 +16,7 @@ using namespace cv;
 using namespace std;
 
 float resizeRatio = 0.5;
-bool ArduinoConnected = false;
+bool ArduinoConnected = true;
 
 int cam_index_1 = 1;
 int cam_index_2 = 1 - cam_index_1;

@@ -100,8 +100,9 @@ void setColor(int colorFront)
 
     case int('w'):
         method = THRESH_BINARY;
-        erode_val = 2;
-        threshold_bw = 243;
+        erode_val = 4;
+        threshold_bw = 190;
+        
         break;
 
     case int('b'):
@@ -208,7 +209,7 @@ void calibrateThresholdBlackWhite(int color)
     {
         camera >> newFrame; // get a new frame from camera
         //newFrame = imread("board3.png");
-        resize(newFrame, newFrame, Size(), 1, 1, INTER_LINEAR);
+        resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
         image = thresholdImage(newFrame, color, true);
         dispImage(image, "Calibration", 2);
         int c = waitKey(10);
@@ -227,8 +228,8 @@ Mat thresholdImageBlackWhite(Mat image, int color, bool calibration)
 
     threshold(imageOUT, imageOUT, threshold_bw, 255, method);
     erode(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), erode_val);
-    medianBlur(imageOUT, imageOUT, 5);
-    dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 3);
+    medianBlur(imageOUT, imageOUT, 1);
+    dilate(imageOUT, imageOUT, cv::Mat(), cv::Point(-1, -1), 2);
     return imageOUT;
 }
 

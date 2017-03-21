@@ -1,8 +1,10 @@
 bool searchColor(Mat img, int color);
 void goTowardsObjectMethod(int color);
 void searchColorMethod(int color);
-void goTowardsSlot(int base_speed, Mat img, int trig_index, bool ArduinoConnected, int y_threshold, int turn_rate_divider);
-bool goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnected, int y_threshold, int turn_rate_divider);
+void goTowardsSlot(int base_speed, Mat img, int trig_index, bool ArduinoConnected, int y_threshold, double turn_rate_divider);
+bool goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnected, int y_threshold, double turn_rate_divider);
+
+
 
 void searchColorMethod(int color)
 {
@@ -33,21 +35,22 @@ void goTowardsObjectMethod(int color)
     }
     camera.release();
 */
-    startCamera(cam_index_2);
+    startCamera(cam_index_1);
     object_exist = true;
     while (object_exist)
     {
         camera >> newFrame;
         resize(newFrame, newFrame, Size(), resizeRatio, resizeRatio, INTER_LINEAR);
-        object_exist = goTowardsObject(90, newFrame, color, ArduinoConnected, 95, 4);
+        object_exist = goTowardsObject(100, newFrame, color, ArduinoConnected, 75, 7.5);
     }
 }
 
-/*
+
 void goTowardsSlot(int base_speed, Mat img, int trig_index, bool ArduinoConnected, int y_threshold, int turn_rate_divider)
 {
-    Point2f center = getBoardSlot(img, trig_index);
+    Point2f center = getBoardSlot(img, trig_index, trig_index+1);
 
+    dispImage(img, "trig", 0);
     int mid_y = img.rows / 2;
     int mid_x = img.cols / 2;
     Point2f test(mid_x, mid_y);
@@ -69,7 +72,7 @@ void goTowardsSlot(int base_speed, Mat img, int trig_index, bool ArduinoConnecte
         txArduino(driveMotor(0, 0));
     }
 }
-*/
+
 
 bool searchColor(Mat img, int color)
 {
@@ -90,7 +93,7 @@ bool searchColor(Mat img, int color)
     return object_exist;
 }
 
-bool goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnected, int y_threshold, int turn_rate_divider)
+bool goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnected, int y_threshold, double turn_rate_divider)
 {
     //tracks object with an image taken from camera
     //uses global angle variable
@@ -102,7 +105,7 @@ bool goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnec
     Point2f test(mid_x, mid_y);
     center = center - test;
     string txString;
-    int speed = (center.x) / turn_rate_divider;
+    double speed = (center.x) / turn_rate_divider;
     if (abs(center.x) < 550)
     {
         txArduino(driveMotor(base_speed + speed, base_speed - speed));
@@ -111,7 +114,7 @@ bool goTowardsObject(int base_speed, Mat img, int colorFront, bool ArduinoConnec
     {
         txArduino(driveMotor(0, 0));
     }
-
+    cout << endl << center.y << endl;
     if (center.y > y_threshold)
     {
         //driveMotorForSeconds(1.5, 100, 100);

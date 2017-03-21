@@ -16,17 +16,23 @@ int main(int argc, char *argv[])
     int colorFront = 'B';
     int colorFlag = 'P';
 
-    //startCamera(0);
+    startCamera(cam_index_1);
+    //calibrateThresholdBlackWhite('w');
     //calibrateThreshold('P');
 
     //getFrameFromCamera(true, true);
     //calibrateDoubleCamera();
     //getPanaroma();
 
-    getBoardInfo();
+    //getBoardInfo();
 
     //searchColorMethod(colorFront);
     //goTowardsObjectMethod(colorFront);
+
+    while(true){
+    getFrameFromCamera();
+    goTowardsSlot(100, newFrame, 0, ArduinoConnected, 75, 7);
+    }
 
     //searchColorMethod(colorFlag);
     //goTowardsObjectMethod(colorFlag);
