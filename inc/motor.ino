@@ -49,36 +49,29 @@ void setup() {
   
   stringComplete = false;
   //inputString = "X102F102F";
+  // or imputString = "X100U0000";
 }
 
 void loop() {
   /*working variables*/
   if (stringComplete == true) {
      step_or_dc = inputString.substring(7,8) ;
-     Serial.print("\n");Serial.print(step_or_dc);
      if (step_or_dc == "F" or step_or_dc == "R" ){
        left_speed = inputString.substring(0,3) ;
        left_direction = inputString.substring(3,4) ;
        right_speed = inputString.substring(4,7) ;
        right_direction = inputString.substring(7,8) ;
-       Serial.print("\nLeft wheel turning ");
-       if (left_direction == "F") {analogWrite(left_1, left_speed.toInt());analogWrite(left_2, 0); 
-                                    Serial.print("forward with "); Serial.print(left_speed); }
-       else if (left_direction == "R"){analogWrite(left_2, left_speed.toInt());analogWrite(left_1, 0);  
-                                    Serial.print("backward with "); Serial.print(left_speed); }
-       Serial.print(".\nRight wheel turning ");
-       if (right_direction == "F") {analogWrite(right_1, right_speed.toInt());analogWrite(right_2, 0); 
-                                    Serial.print("forward with "); Serial.print(right_speed);Serial.print(".\n"); }
-       else if (right_direction == "R"){analogWrite(right_2, right_speed.toInt());analogWrite(right_1, 0);  
-                                    Serial.print("backward with "); Serial.print(right_speed);Serial.print(".\n"); }
+       if (left_direction == "F") {analogWrite(left_1, left_speed.toInt());analogWrite(left_2, 0);}
+       else if (left_direction == "R"){analogWrite(left_2, left_speed.toInt());analogWrite(left_1, 0);}
+       
+       if (right_direction == "F") {analogWrite(right_1, right_speed.toInt());analogWrite(right_2, 0);}
+       else if (right_direction == "R"){analogWrite(right_2, right_speed.toInt());analogWrite(right_1, 0); }
   	stringComplete = false;
          inputString="" ;
      }
      else if (step_or_dc == "0") {
        step_level = inputString.substring(0,3) ;
        up_or_down = inputString.substring(3,4) ;
-       Serial.print("\n");Serial.print(step_level);
-       Serial.print("\n");Serial.print(up_or_down);
        if (up_or_down == "U") {step_up(step_level.toInt());}
        else if (up_or_down == "D") {step_down(step_level.toInt());}
        stringComplete = false;
